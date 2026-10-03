@@ -20,7 +20,7 @@ export default function DashboardOverview({
   onUpdateStatus
 }) {
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAppointments = appointments.filter(a => a.appointment_date === todayStr);
+  const todayAppointments = (appointments || []).filter(a => a.appointment_date === todayStr);
 
   const pendingCount = todayAppointments.filter(a => a.status === 'kutilmoqda').length;
   const confirmedCount = todayAppointments.filter(a => a.status === 'tasdiqlandi').length;
@@ -33,7 +33,8 @@ export default function DashboardOverview({
     .reduce((sum, item) => sum + (Number(item.service_price) || 0), 0);
 
   const formatPrice = (p) => {
-    return new Intl.NumberFormat('uz-UZ').format(p) + " so'm";
+    const num = Number(p) || 0;
+    return new Intl.NumberFormat('uz-UZ').format(num) + " so'm";
   };
 
   const getStatusBadge = (status) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -16,15 +16,21 @@ import {
 import DentalChart from '../components/DentalChart';
 
 export default function PatientsCRM({
-  patients,
-  appointments,
-  dentalRecords,
+  patients = [],
+  appointments = [],
+  dentalRecords = {},
   onSavePatient,
   onUpdateTooth
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(patients[0] || null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  useEffect(() => {
+    if (!selectedPatient && patients && patients.length > 0) {
+      setSelectedPatient(patients[0]);
+    }
+  }, [patients, selectedPatient]);
 
   // Yangi bemor formasi
   const [newFullName, setNewFullName] = useState('');
@@ -34,9 +40,11 @@ export default function PatientsCRM({
   const [newAllergies, setNewAllergies] = useState('');
   const [newMedicalNotes, setNewMedicalNotes] = useState('');
 
-  const filteredPatients = patients.filter(p => {
-    return p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           p.phone.includes(searchQuery);
+  const filteredPatients = (patients || []).filter(p => {
+    const name = (p.full_name || '').toLowerCase();
+    const phone = p.phone || '';
+    const q = (searchQuery || '').toLowerCase();
+    return name.includes(q) || phone.includes(q);
   });
 
   const handleCreatePatient = (e) => {

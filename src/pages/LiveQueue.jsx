@@ -25,14 +25,19 @@ export default function LiveQueue({
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const formatPrice = (p) => new Intl.NumberFormat('uz-UZ').format(p) + " so'm";
+  const formatPrice = (p) => {
+    const num = Number(p) || 0;
+    return new Intl.NumberFormat('uz-UZ').format(num) + " so'm";
+  };
 
-  const filteredAppointments = appointments.filter(app => {
+  const filteredAppointments = (appointments || []).filter(app => {
     const matchesDate = !selectedDate || app.appointment_date === selectedDate;
     const matchesDoctor = selectedDoctor === 'all' || app.doctor_id === selectedDoctor;
     const matchesStatus = selectedStatus === 'all' || app.status === selectedStatus;
-    const matchesSearch = app.patient_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          app.patient_phone.includes(searchQuery);
+    const name = (app.patient_name || '').toLowerCase();
+    const phone = app.patient_phone || '';
+    const q = (searchQuery || '').toLowerCase();
+    const matchesSearch = name.includes(q) || phone.includes(q);
     return matchesDate && matchesDoctor && matchesStatus && matchesSearch;
   });
 

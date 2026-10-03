@@ -110,7 +110,7 @@ export default function Sidebar({ currentTab, setCurrentTab, counts }) {
             Bemorlar uchun alohida domen orqali ishlaydi
           </p>
           <a
-            href="http://localhost:3000"
+            href="https://dentaluz2.netlify.app/"
             target="_blank"
             rel="noreferrer"
             className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors"

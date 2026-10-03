@@ -10,11 +10,15 @@ const LOWER_LEFT  = [31, 32, 33, 34, 35, 36, 37, 38];
 const CONDITIONS = {
   soglom: { label: "Sog'lom", color: 'bg-emerald-500', text: 'text-emerald-700', border: 'border-emerald-300', bgLight: 'bg-emerald-50' },
   kariyes: { label: 'Kariyes', color: 'bg-amber-500', text: 'text-amber-700', border: 'border-amber-300', bgLight: 'bg-amber-50' },
+  karies: { label: 'Kariyes', color: 'bg-amber-500', text: 'text-amber-700', border: 'border-amber-300', bgLight: 'bg-amber-50' },
   plomba: { label: 'Plomba', color: 'bg-blue-500', text: 'text-blue-700', border: 'border-blue-300', bgLight: 'bg-blue-50' },
   pulpa: { label: 'Ildiz kanali / Pulpa', color: 'bg-rose-500', text: 'text-rose-700', border: 'border-rose-300', bgLight: 'bg-rose-50' },
+  pulpar_davolangan: { label: 'Ildiz kanali', color: 'bg-rose-500', text: 'text-rose-700', border: 'border-rose-300', bgLight: 'bg-rose-50' },
   koronka: { label: 'Koronka / Qoplama', color: 'bg-purple-500', text: 'text-purple-700', border: 'border-purple-300', bgLight: 'bg-purple-50' },
+  'toj (koronka)': { label: 'Koronka', color: 'bg-purple-500', text: 'text-purple-700', border: 'border-purple-300', bgLight: 'bg-purple-50' },
   implant: { label: 'Dental Implant', color: 'bg-cyan-500', text: 'text-cyan-700', border: 'border-cyan-300', bgLight: 'bg-cyan-50' },
-  olingan: { label: 'Tish olingan', color: 'bg-slate-700', text: 'text-slate-700', border: 'border-slate-400', bgLight: 'bg-slate-100' }
+  olingan: { label: 'Tish olingan', color: 'bg-slate-700', text: 'text-slate-700', border: 'border-slate-400', bgLight: 'bg-slate-100' },
+  olib_tashlangan: { label: 'Olib tashlangan', color: 'bg-slate-700', text: 'text-slate-700', border: 'border-slate-400', bgLight: 'bg-slate-100' }
 };
 
 export default function DentalChart({ patientId, patientName, records = {}, onUpdateTooth }) {
@@ -24,13 +28,16 @@ export default function DentalChart({ patientId, patientName, records = {}, onUp
   const [treatment, setTreatment] = useState('');
   const [cost, setCost] = useState('');
 
+  const safeRecords = records && typeof records === 'object' ? records : {};
+
   const openToothModal = (toothNumber) => {
-    const existing = records[toothNumber] || {};
+    const existing = safeRecords[toothNumber] || {};
     setSelectedTooth(toothNumber);
-    setCondition(existing.condition || 'soglom');
+    const cond = existing.condition || existing.status || 'soglom';
+    setCondition(CONDITIONS[cond] ? cond : 'soglom');
     setDiagnosis(existing.diagnosis || '');
     setTreatment(existing.treatment_applied || existing.treatment || '');
-    setCost(existing.cost || '');
+    setCost(existing.cost || existing.cost_uzs || '');
   };
 
   const handleSaveTooth = (e) => {
@@ -39,6 +46,7 @@ export default function DentalChart({ patientId, patientName, records = {}, onUp
 
     onUpdateTooth(patientId, selectedTooth, {
       condition,
+      status: condition,
       diagnosis,
       treatment_applied: treatment,
       cost: Number(cost) || 0,
@@ -49,8 +57,8 @@ export default function DentalChart({ patientId, patientName, records = {}, onUp
   };
 
   const renderToothBox = (toothNum) => {
-    const data = records[toothNum];
-    const toothCondition = data?.condition || 'soglom';
+    const data = safeRecords[toothNum];
+    const toothCondition = data?.condition || data?.status || 'soglom';
     const condConfig = CONDITIONS[toothCondition] || CONDITIONS.soglom;
 
     return (

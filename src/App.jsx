@@ -45,17 +45,22 @@ export default function App() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [appData, patData, docData, srvData] = await Promise.all([
+      const [appData, patData, docData, srvData, clinicData, dentalData] = await Promise.all([
         getAppointments(),
         getPatients(),
         getDoctors(),
-        getServices()
+        getServices(),
+        getClinicInfo(),
+        getDentalRecords()
       ]);
-      setAppointments(appData);
-      setPatients(patData);
-      setDoctors(docData);
-      setServices(srvData);
-      setClinic(getClinicInfo());
+      setAppointments(Array.isArray(appData) ? appData : []);
+      setPatients(Array.isArray(patData) ? patData : []);
+      setDoctors(Array.isArray(docData) ? docData : []);
+      setServices(Array.isArray(srvData) ? srvData : []);
+      if (clinicData) setClinic(clinicData);
+      if (dentalData && typeof dentalData === 'object') {
+        setDentalRecords(dentalData);
+      }
     } catch (e) {
       console.error('Data loading error:', e);
     } finally {
@@ -72,14 +77,15 @@ export default function App() {
     const updated = await updateAppointmentStatus(appointmentId, status);
     setAppointments(updated);
     
-    // Telegram Bot backend xabarnomasi
+    // Telegram Bot Edge Function xabarnomasi
     const booking = appointments.find(a => a.id === appointmentId);
     if (booking) {
+      const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://jvzghreavlzjpxhnasxd.supabase.co/functions/v1/telegram-bot';
       try {
-        fetch('http://localhost:4000/api/notify-status-change', {
+        fetch(botApiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ booking, newStatus: status })
+          body: JSON.stringify({ action: 'notify-status-change', booking, newStatus: status })
         }).catch(() => {});
       } catch (e) {}
     }
