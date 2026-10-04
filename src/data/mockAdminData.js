@@ -32,7 +32,7 @@ export const INITIAL_DOCTORS = [
     experience_years: 9,
     room_number: 'Xona 2',
     phone: '+998 93 987 65 43',
-    photo_url: 'https://images.unsplash.com/photo-1594824813576-919c0840b991?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&auto=format&fit=crop&q=80',
     bio: "Estetik tish restavratsiyasi va ildiz kanallarini og'riqsiz davolash.",
     rating: 5.0,
     is_active: true
