@@ -91,10 +91,20 @@ function formatPrice(p: number) {
 
 // 1. Asosiy Menyu va /start xabari
 async function sendWelcome(chatId: number, firstName: string = "Hurmatli mijoz") {
+  // Telegram pastki chap menyu tugmasini ushbu chat uchun WebApp ga ulash
+  callTelegram("setChatMenuButton", {
+    chat_id: chatId,
+    menu_button: {
+      type: "web_app",
+      text: "🦷 WebApp Kirish",
+      web_app: { url: WEBAPP_URL }
+    }
+  }).catch(() => {});
+
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
     `🦷 <b>DentaCare Zamonaviy Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
     `Bizning klinikamizda og'riqsiz davolash, zamonaviy implantatsiya, breketlar va estetik restavratsiya xizmatlari mavjud.\n\n` +
-    `👇 <b>Qabulga yozilish uchun o'zingizga qulay usulni tanlang:</b>`;
+    `👇 <b>Qabulga yozilish uchun WebApp yoki botdan foydalaning:</b>`;
 
   const replyMarkup = {
     inline_keyboard: [
@@ -136,6 +146,13 @@ async function sendWelcome(chatId: number, firstName: string = "Hurmatli mijoz")
     text,
     parse_mode: "HTML",
     reply_markup: replyMarkup
+  });
+
+  await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text: "Pastdagi <b>🦷 WebApp Mini App</b> tugmasi orqali ham ilovani ochishingiz mumkin:",
+    parse_mode: "HTML",
+    reply_markup: keyboardMarkup
   });
 }
 

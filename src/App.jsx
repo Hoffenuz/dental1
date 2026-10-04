@@ -24,28 +24,37 @@ import {
   getDentalRecords,
   updateToothRecord
 } from './supabase';
-import { INITIAL_DENTAL_RECORDS } from './data/mockAdminData';
+import { 
+  INITIAL_CLINIC, 
+  INITIAL_DOCTORS, 
+  INITIAL_SERVICES, 
+  INITIAL_PATIENTS, 
+  INITIAL_APPOINTMENTS,
+  INITIAL_DENTAL_RECORDS 
+} from './data/mockAdminData';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // States
-  const [appointments, setAppointments] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [services, setServices] = useState([]);
-  const [clinic, setClinic] = useState({});
+  // States - oq ekran bo'lmasligi uchun dastlabki ma'lumotlar bilan ochiladi
+  const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
+  const [patients, setPatients] = useState(INITIAL_PATIENTS);
+  const [doctors, setDoctors] = useState(INITIAL_DOCTORS);
+  const [services, setServices] = useState(INITIAL_SERVICES);
+  const [clinic, setClinic] = useState(INITIAL_CLINIC);
   const [dentalRecords, setDentalRecords] = useState(INITIAL_DENTAL_RECORDS);
 
   // Modal states
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
 
-  // Initial data loading
+  // Initial data loading in background
   const loadAllData = async () => {
-    setLoading(true);
     try {
-      const [appData, patData, docData, srvData, clinicData, dentalData] = await Promise.all([
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 4000)
+      );
+      const fetchPromise = Promise.all([
         getAppointments(),
         getPatients(),
         getDoctors(),
@@ -53,18 +62,21 @@ export default function App() {
         getClinicInfo(),
         getDentalRecords()
       ]);
-      setAppointments(Array.isArray(appData) ? appData : []);
-      setPatients(Array.isArray(patData) ? patData : []);
-      setDoctors(Array.isArray(docData) ? docData : []);
-      setServices(Array.isArray(srvData) ? srvData : []);
+      const [appData, patData, docData, srvData, clinicData, dentalData] = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]);
+
+      if (Array.isArray(appData) && appData.length > 0) setAppointments(appData);
+      if (Array.isArray(patData) && patData.length > 0) setPatients(patData);
+      if (Array.isArray(docData) && docData.length > 0) setDoctors(docData);
+      if (Array.isArray(srvData) && srvData.length > 0) setServices(srvData);
       if (clinicData) setClinic(clinicData);
       if (dentalData && typeof dentalData === 'object') {
         setDentalRecords(dentalData);
       }
     } catch (e) {
-      console.error('Data loading error:', e);
-    } finally {
-      setLoading(false);
+      console.warn('Supabase ma\'lumotlarini fonda yangilashda ogohlantirish:', e.message);
     }
   };
 
@@ -154,14 +166,7 @@ export default function App() {
         />
 
         <main className="flex-1 p-6 overflow-y-auto">
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center space-y-3">
-              <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs text-slate-500 font-medium">Boshqaruv paneli yuklanmoqda...</p>
-            </div>
-          ) : (
-            <>
-              {currentTab === 'dashboard' && (
+          {currentTab === 'dashboard' && (
                 <DashboardOverview
                   appointments={appointments}
                   patients={patients}
@@ -212,8 +217,6 @@ export default function App() {
                   onSaveClinic={handleSaveClinic}
                 />
               )}
-            </>
-          )}
         </main>
       </div>
 
