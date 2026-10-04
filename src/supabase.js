@@ -8,18 +8,25 @@ import {
   INITIAL_DENTAL_RECORDS
 } from './data/mockAdminData';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jvzghreavlzjpxhnasxd.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDI2OTcsImV4cCI6MjEwMDg3ODY5N30.bRCRxNOR32VEcI8Pd-0OpSvtfESC1UyTpeJ1TItA0Y4';
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jvzghreavlzjpxhnasxd.supabase.co';
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDI2OTcsImV4cCI6MjEwMDg3ODY5N30.bRCRxNOR32VEcI8Pd-0OpSvtfESC1UyTpeJ1TItA0Y4';
 
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  !supabaseUrl.includes('placeholder')
-);
+// Har qanday qo'shimcha qo'shtirnoq, probel yoki xato formatlarni tozalash
+const cleanUrl = String(rawUrl).trim().replace(/^["']|["']$/g, '');
+const cleanKey = String(rawKey).trim().replace(/^["']|["']$/g, '');
 
-export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
+let client = null;
+if (cleanUrl && cleanKey && !cleanUrl.includes('placeholder')) {
+  try {
+    client = createClient(cleanUrl, cleanKey);
+  } catch (err) {
+    console.warn('Supabase createClient xatolik berdi, mock rejimda ishlanadi:', err);
+    client = null;
+  }
+}
+
+export const isSupabaseConfigured = Boolean(client);
+export const supabase = client;
 
 // Local storage kalitlari
 const STORAGE_KEYS = {
