@@ -11,7 +11,9 @@ import {
   Sparkles, 
   X,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import DentalChart from '../components/DentalChart';
 
@@ -21,12 +23,22 @@ export default function PatientsCRM({
   dentalRecords = {},
   doctors = [],
   onSavePatient,
+  onDeletePatient,
   onUpdateTooth,
   onDeleteTooth
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(patients[0] || null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Tahrirlash formasi
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editBirthDate, setEditBirthDate] = useState('');
+  const [editGender, setEditGender] = useState('erkak');
+  const [editAllergies, setEditAllergies] = useState('');
+  const [editMedicalNotes, setEditMedicalNotes] = useState('');
 
   useEffect(() => {
     if (!selectedPatient && patients && patients.length > 0) {
@@ -69,6 +81,49 @@ export default function PatientsCRM({
     setNewBirthDate('');
     setNewAllergies('');
     setNewMedicalNotes('');
+  };
+
+  const openEditModal = () => {
+    if (!selectedPatient) return;
+    setEditFullName(selectedPatient.full_name || '');
+    setEditPhone(selectedPatient.phone || '');
+    setEditBirthDate(selectedPatient.birth_date || '');
+    setEditGender(selectedPatient.gender || 'erkak');
+    setEditAllergies(selectedPatient.allergies === "Yo'q" ? '' : (selectedPatient.allergies || ''));
+    setEditMedicalNotes(selectedPatient.medical_notes || '');
+    setShowEditModal(true);
+  };
+
+  const handleUpdatePatient = (e) => {
+    e.preventDefault();
+    if (!selectedPatient || !editFullName || !editPhone) return;
+
+    const updated = {
+      ...selectedPatient,
+      full_name: editFullName,
+      phone: editPhone,
+      birth_date: editBirthDate,
+      gender: editGender,
+      allergies: editAllergies || "Yo'q",
+      medical_notes: editMedicalNotes || ''
+    };
+
+    onSavePatient(updated);
+    setSelectedPatient(updated);
+    setShowEditModal(false);
+  };
+
+  const handleDeleteCurrentPatient = () => {
+    if (!selectedPatient) return;
+    const confirmDelete = window.confirm(`"${selectedPatient.full_name}" bemor kartasi va barcha tish ma'lumotlarini bazadan o'chirishni tasdiqlaysizmi?`);
+    if (confirmDelete) {
+      const pId = selectedPatient.id;
+      if (onDeletePatient) {
+        onDeletePatient(pId);
+      }
+      const remaining = patients.filter(p => p.id !== pId);
+      setSelectedPatient(remaining.length > 0 ? remaining[0] : null);
+    }
   };
 
   const patientAppointments = appointments.filter(a => 
@@ -192,13 +247,35 @@ export default function PatientsCRM({
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-slate-600 block">{selectedPatient.phone}</span>
-                    {selectedPatient.telegram_username && (
-                      <span className="text-[11px] text-cyan-600 font-medium block">
-                        @{selectedPatient.telegram_username}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-slate-600 block">{selectedPatient.phone}</span>
+                      {selectedPatient.telegram_username && (
+                        <span className="text-[11px] text-cyan-600 font-medium block">
+                          @{selectedPatient.telegram_username}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+                      <button
+                        type="button"
+                        onClick={openEditModal}
+                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-cyan-50 text-slate-700 hover:text-cyan-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
+                        title="Bemor ma'lumotlarini tahrirlash"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Tahrirlash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteCurrentPatient}
+                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer border border-rose-200"
+                        title="Bemorni o'chirish"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -379,6 +456,123 @@ export default function PatientsCRM({
                   className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow-xs"
                 >
                   Bemor Kartasini Saqlash
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bemor ma'lumotlarini tahrirlash modali */}
+      {showEditModal && selectedPatient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800">Bemor Ma'lumotlarini Tahrirlash</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePatient} className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Bemorning F.I.SH *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="Ism Familiya"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Telefon Raqami *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+998 90 123 45 67"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Tug'ilgan sana
+                  </label>
+                  <input
+                    type="date"
+                    value={editBirthDate}
+                    onChange={(e) => setEditBirthDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Jinsi
+                  </label>
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="erkak">Erkak</option>
+                    <option value="ayol">Ayol</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Allergiya (Dori yoki anestezik vositalar)
+                </label>
+                <input
+                  type="text"
+                  value={editAllergies}
+                  onChange={(e) => setEditAllergies(e.target.value)}
+                  placeholder="Masalan: Penitsillinga allergiya yoki Yo'q"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Shikoyat yoki tibbiy yozuv
+                </label>
+                <textarea
+                  rows={2}
+                  value={editMedicalNotes}
+                  onChange={(e) => setEditMedicalNotes(e.target.value)}
+                  placeholder="Klinik tashxis yoki bemor shikoyati..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                ></textarea>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                >
+                  O'zgarishlarni Saqlash
                 </button>
               </div>
             </form>

@@ -4,7 +4,6 @@ import {
   CheckCircle2, 
   Clock4, 
   AlertCircle, 
-  TrendingUp, 
   Users, 
   ArrowUpRight,
   Stethoscope,
@@ -26,11 +25,6 @@ export default function DashboardOverview({
   const confirmedCount = todayAppointments.filter(a => a.status === 'tasdiqlandi').length;
   const inProgressCount = todayAppointments.filter(a => a.status === 'qabulda').length;
   const completedCount = todayAppointments.filter(a => a.status === 'yakunlandi').length;
-
-  // Bugungi kutilayotgan umumiy daromad
-  const estimatedRevenue = todayAppointments
-    .filter(a => a.status !== 'bekor_qilindi')
-    .reduce((sum, item) => sum + (Number(item.service_price) || 0), 0);
 
   const formatPrice = (p) => {
     const num = Number(p) || 0;
@@ -124,17 +118,15 @@ export default function DashboardOverview({
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Kutilayotgan Tushum</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Jami Bemorlar</span>
+            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+              <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-lg font-black text-emerald-600 truncate max-w-[180px]">
-              {formatPrice(estimatedRevenue)}
-            </span>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-              Bugun
+            <span className="text-2xl font-black text-slate-800">{(patients || []).length}</span>
+            <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">
+              Kartoteka
             </span>
           </div>
         </div>

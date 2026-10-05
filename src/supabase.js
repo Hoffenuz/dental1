@@ -182,8 +182,8 @@ export const getPatients = async () => {
   if (supabase) {
     try {
       const { data, error } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
-      if (!error && Array.isArray(data) && data.length > 0) {
-        return data.map(p => ({
+      if (!error && Array.isArray(data)) {
+        const mapped = data.map(p => ({
           ...p,
           id: p.id,
           full_name: p.full_name || 'Bemor',
@@ -194,6 +194,8 @@ export const getPatients = async () => {
           medical_notes: p.medical_notes || '',
           total_visits: p.total_visits || 0
         }));
+        saveStorage(STORAGE_KEYS.PATIENTS, mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase bemorlarni olishda xato', e);
@@ -212,7 +214,8 @@ export const savePatient = async (patientData) => {
           birth_date: patientData.birth_date || null,
           gender: patientData.gender || 'erkak',
           allergies: patientData.allergies || null,
-          medical_notes: patientData.medical_notes || null
+          medical_notes: patientData.medical_notes || null,
+          updated_at: new Date().toISOString()
         }).eq('id', patientData.id);
       } else {
         const { data } = await supabase.from('patients').insert([{
@@ -234,7 +237,12 @@ export const savePatient = async (patientData) => {
   const current = loadStorage(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
   let updated;
   if (patientData.id) {
-    updated = current.map(p => p.id === patientData.id ? { ...p, ...patientData } : p);
+    const exists = current.some(p => p.id === patientData.id);
+    if (exists) {
+      updated = current.map(p => p.id === patientData.id ? { ...p, ...patientData } : p);
+    } else {
+      updated = [patientData, ...current];
+    }
   } else {
     const newPatient = {
       id: 'p-' + Math.random().toString(36).substring(2, 9),
@@ -245,6 +253,36 @@ export const savePatient = async (patientData) => {
     updated = [newPatient, ...current];
   }
   saveStorage(STORAGE_KEYS.PATIENTS, updated);
+  return updated;
+};
+
+export const deletePatient = async (patientId) => {
+  if (!patientId) return [];
+
+  if (supabase) {
+    try {
+      // 1. Tish yozuvlarini o'chirish
+      await supabase.from('dental_records').delete().eq('patient_id', patientId);
+      // 2. Qabullarni o'chirish
+      await supabase.from('appointments').delete().eq('patient_id', patientId);
+      // 3. Bemorni o'chirish
+      await supabase.from('patients').delete().eq('id', patientId);
+    } catch (e) {
+      console.warn('Supabase bemorni o\'chirishda xato:', e.message);
+    }
+  }
+
+  const current = loadStorage(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+  const updated = current.filter(p => p.id !== patientId);
+  saveStorage(STORAGE_KEYS.PATIENTS, updated);
+
+  // Dental records dan ham o'chirish
+  const dentalRecs = loadStorage(STORAGE_KEYS.DENTAL_RECORDS, {});
+  if (dentalRecs[patientId]) {
+    delete dentalRecs[patientId];
+    saveStorage(STORAGE_KEYS.DENTAL_RECORDS, dentalRecs);
+  }
+
   return updated;
 };
 

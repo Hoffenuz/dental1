@@ -21,7 +21,8 @@ import {
   saveClinicInfo,
   getDentalRecords,
   updateToothRecord,
-  deleteToothRecord
+  deleteToothRecord,
+  deletePatient
 } from './supabase';
 import { 
   INITIAL_CLINIC, 
@@ -110,7 +111,23 @@ export default function App() {
   // Bemorni saqlash
   const handleSavePatient = async (patientData) => {
     const updated = await savePatient(patientData);
-    setPatients(updated);
+    if (Array.isArray(updated)) {
+      setPatients(updated);
+    }
+  };
+
+  // Bemorni o'chirish
+  const handleDeletePatient = async (patientId) => {
+    setPatients(prev => prev.filter(p => p.id !== patientId));
+    setDentalRecords(prev => {
+      const copy = { ...prev };
+      delete copy[patientId];
+      return copy;
+    });
+    const updated = await deletePatient(patientId);
+    if (Array.isArray(updated)) {
+      setPatients(updated);
+    }
   };
 
   // Tish kartasini yangilash
@@ -214,6 +231,7 @@ export default function App() {
               doctors={doctors}
               dentalRecords={dentalRecords}
               onSavePatient={handleSavePatient}
+              onDeletePatient={handleDeletePatient}
               onUpdateTooth={handleUpdateTooth}
               onDeleteTooth={handleDeleteTooth}
             />

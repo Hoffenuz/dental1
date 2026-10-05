@@ -12,7 +12,8 @@ import {
   DollarSign,
   Calendar,
   User,
-  Plus
+  Plus,
+  Activity
 } from 'lucide-react';
 
 // FDI World Dental Federation 32 tish xalqaro raqamlanishi
@@ -263,6 +264,76 @@ export default function DentalChart({
     }
   };
 
+  // Professional tibbiy tish grafikasi (Emojisiz, toza SVG)
+  const renderToothVisual = (condition, isProblem) => {
+    if (condition === 'olingan') {
+      return (
+        <svg className="w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 4C9 4 7 5.5 7 8C7 10 8 11.5 8.5 13.5C9 15.5 8.5 19 9.5 20C10.5 20.5 11.5 18 12 16.5C12.5 18 13.5 20.5 14.5 20C15.5 19 15 15.5 15.5 13.5C16 11.5 17 10 17 8C17 5.5 15 4 12 4Z" opacity="0.25" strokeDasharray="2 2" />
+          <line x1="5" y1="5" x2="19" y2="19" stroke="#EF4444" strokeWidth="2.5" />
+        </svg>
+      );
+    }
+
+    if (condition === 'implant') {
+      return (
+        <svg className="w-5 h-5 text-cyan-600" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="9" y="3" width="6" height="3" rx="1" fill="currentColor" />
+          <path d="M8 7H16L15 11H9L8 7Z" fill="currentColor" />
+          <rect x="9.5" y="12" width="5" height="1.5" rx="0.5" fill="currentColor" opacity="0.85" />
+          <rect x="10" y="14.5" width="4" height="1.5" rx="0.5" fill="currentColor" opacity="0.85" />
+          <rect x="10.5" y="17" width="3" height="1.5" rx="0.5" fill="currentColor" opacity="0.85" />
+          <polygon points="12,21 10.5,19.5 13.5,19.5" fill="currentColor" />
+        </svg>
+      );
+    }
+
+    if (condition === 'koronka') {
+      return (
+        <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M5 17L7 8L12 11.5L17 8L19 17H5Z" opacity="0.8" />
+          <circle cx="7" cy="7" r="1.2" />
+          <circle cx="12" cy="10.5" r="1.2" />
+          <circle cx="17" cy="7" r="1.2" />
+        </svg>
+      );
+    }
+
+    if (condition === 'plomba') {
+      return (
+        <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M12 3C8.5 3 6.5 4.5 6.5 7.5C6.5 9.5 7.2 11.5 7.8 13.5C8.4 15.5 8 19 9.2 19.5C10.2 20 11.2 17.5 12 16C12.8 17.5 13.8 20 14.8 19.5C16 19 15.6 15.5 16.2 13.5C16.8 11.5 17.5 9.5 17.5 7.5C17.5 4.5 15.5 3 12 3Z" fill="#DBEAFE" />
+          <rect x="9.5" y="5.5" width="5" height="4.5" rx="1" fill="#2563EB" />
+        </svg>
+      );
+    }
+
+    if (condition === 'karies') {
+      return (
+        <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M12 3C8.5 3 6.5 4.5 6.5 7.5C6.5 9.5 7.2 11.5 7.8 13.5C8.4 15.5 8 19 9.2 19.5C10.2 20 11.2 17.5 12 16C12.8 17.5 13.8 20 14.8 19.5C16 19 15.6 15.5 16.2 13.5C16.8 11.5 17.5 9.5 17.5 7.5C17.5 4.5 15.5 3 12 3Z" fill="#FEF3C7" />
+          <circle cx="13.5" cy="7" r="2.2" fill="#D97706" />
+        </svg>
+      );
+    }
+
+    if (condition === 'ildiz_kanali') {
+      return (
+        <svg className="w-5 h-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M12 3C8.5 3 6.5 4.5 6.5 7.5C6.5 9.5 7.2 11.5 7.8 13.5C8.4 15.5 8 19 9.2 19.5C10.2 20 11.2 17.5 12 16C12.8 17.5 13.8 20 14.8 19.5C16 19 15.6 15.5 16.2 13.5C16.8 11.5 17.5 9.5 17.5 7.5C17.5 4.5 15.5 3 12 3Z" fill="#FFE4E6" />
+          <path d="M10 9V17M14 9V17" stroke="#E11D48" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
+    // Sog'lom (Healthy Anatomical Tooth)
+    return (
+      <svg className="w-5 h-5 text-slate-400 group-hover:text-cyan-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <path d="M12 3C8.5 3 6.5 4.5 6.5 7.5C6.5 9.5 7.2 11.5 7.8 13.5C8.4 15.5 8 19 9.2 19.5C10.2 20 11.2 17.5 12 16C12.8 17.5 13.8 20 14.8 19.5C16 19 15.6 15.5 16.2 13.5C16.8 11.5 17.5 9.5 17.5 7.5C17.5 4.5 15.5 3 12 3Z" fill="#F8FAFC" />
+      </svg>
+    );
+  };
+
   // Har bir tish tugmachasi
   const renderToothBox = (toothNum) => {
     const data = safeRecords[toothNum];
@@ -292,18 +363,12 @@ export default function DentalChart({
           {toothNum}
         </span>
 
-        {/* Stilistik tish shakli (Visual Tooth Shape) */}
-        <div className="relative my-0.5">
-          <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
-            isProblem ? condConfig.color : 'bg-slate-100 group-hover:bg-cyan-100'
-          }`}>
-            <span className="text-[10px]">
-              {normCond === 'olingan' ? '✖' : normCond === 'implant' ? '🔩' : normCond === 'koronka' ? '👑' : '🦷'}
-            </span>
-          </div>
+        {/* Tibbiy tish shakli (Visual Tooth Shape - Emojisiz) */}
+        <div className="relative my-0.5 flex items-center justify-center">
+          {renderToothVisual(normCond, isProblem)}
 
           {isProblem && (
-            <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${condConfig.dotColor} ring-1 ring-white animate-pulse`}></span>
+            <span className={`absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full ${condConfig.dotColor} ring-1 ring-white animate-pulse`}></span>
           )}
         </div>
 
@@ -331,8 +396,10 @@ export default function DentalChart({
       {/* Sarlavha va Umumiy Statistika */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-cyan-100 text-cyan-700 text-lg">🦷</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-600 text-white flex items-center justify-center shadow-xs">
+              <Activity className="w-5 h-5" />
+            </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-800 tracking-tight">
                 32 Tish Xaritasi va Bemor Tashxislari (FDI Formula)

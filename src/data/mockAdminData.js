@@ -99,43 +99,40 @@ export const INITIAL_SERVICES = [
 
 export const INITIAL_PATIENTS = [
   {
-    id: 'p1111111-1111-1111-1111-111111111111',
-    full_name: 'Azamat Aliyev',
+    id: 'b1111111-1111-1111-1111-111111111111',
+    full_name: 'Anvar Shukurov',
     phone: '+998 90 111 22 33',
-    telegram_id: 12345678,
-    telegram_username: 'azamat_aliev',
-    birth_date: '1994-05-14',
-    gender: 'erkak',
-    allergies: 'Penitsillinga sezgirlik mavjud',
-    medical_notes: '16-tish ildiz kanali davolangan, profilaktika tavsiya etilgan',
-    total_visits: 3,
-    last_visit: '2026-09-10'
-  },
-  {
-    id: 'p2222222-2222-2222-2222-222222222222',
-    full_name: 'Shahnoza Normurodova',
-    phone: '+998 93 444 55 66',
-    telegram_id: 87654321,
-    telegram_username: 'shahnoza_n',
-    birth_date: '1999-11-20',
-    gender: 'ayol',
-    allergies: 'Mavjud emas',
-    medical_notes: "Yuqori jag'ga breket o'rnatilgan",
-    total_visits: 5,
-    last_visit: '2026-08-25'
-  },
-  {
-    id: 'p3333333-3333-3333-3333-333333333333',
-    full_name: 'Bobur Mirzayev',
-    phone: '+998 97 777 88 99',
-    telegram_id: null,
-    telegram_username: null,
-    birth_date: '1988-02-10',
+    telegram_id: 998877661,
+    telegram_username: 'anvar_sh',
+    birth_date: '1992-05-14',
     gender: 'erkak',
     allergies: "Yo'q",
-    medical_notes: "Breket nazorat ko'rigi",
-    total_visits: 1,
-    last_visit: '2026-09-01'
+    medical_notes: '16-tish davolangan',
+    total_visits: 3
+  },
+  {
+    id: 'b2222222-2222-2222-2222-222222222222',
+    full_name: 'Feruza Ahmedova',
+    phone: '+998 93 444 55 66',
+    telegram_id: 998877662,
+    telegram_username: 'feruza_88',
+    birth_date: '1988-11-20',
+    gender: 'ayol',
+    allergies: 'Penitsillinga sezuvchanlik',
+    medical_notes: 'Profilaktik ko\'rik',
+    total_visits: 5
+  },
+  {
+    id: 'b3333333-3333-3333-3333-333333333333',
+    full_name: 'Bobur Mirzayev',
+    phone: '+998 97 777 88 99',
+    telegram_id: 998877663,
+    telegram_username: 'bobur_mirzo',
+    birth_date: '2001-03-08',
+    gender: 'erkak',
+    allergies: "Yo'q",
+    medical_notes: 'Breket nazorati',
+    total_visits: 1
   }
 ];
 
