@@ -523,7 +523,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ 
       status: "ok", 
-      service: "DentaCare Supabase Edge Function 24/7 Telegram Bot",
+      service: "ORTHODONT-M Supabase Edge Function 24/7 Telegram Bot",
       bot: "@dentalclinicuzbot",
       timestamp: new Date().toISOString()
     }), {
@@ -540,7 +540,7 @@ serve(async (req: Request) => {
       if (b?.patient_telegram_id) {
         await callTelegram("sendMessage", {
           chat_id: b.patient_telegram_id,
-          text: `✅ <b>Sizning navbatingiz qabul qilindi!</b>\n\n• <b>Xizmat:</b> ${b.service_name}\n• <b>Shifokor:</b> ${b.doctor_name}\n• <b>Sana:</b> ${b.appointment_date} (${b.start_time})\n📍 Minor metro, Amir Temur 45`,
+          text: `✅ <b>Sizning navbatingiz qabul qilindi!</b>\n\n• <b>Xizmat:</b> ${b.service_name}\n• <b>Shifokor:</b> ${b.doctor_name}\n• <b>Sana:</b> ${b.appointment_date} (${b.start_time})\n📍 ORTHODONT-M (Minor metro yaqinida)`,
           parse_mode: "HTML"
         });
       }

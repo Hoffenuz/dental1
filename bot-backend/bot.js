@@ -1,5 +1,8 @@
 // ====================================================================
-// DentaCare — Rasmiy Telegram Bot Servisi (@dentalclinicuzbot)
+// ORTHODONT-M — Rasmiy Telegram Bot Servisi (@dentalclinicuzbot)
+// Bosh shifokor: Dr. Ismailov Mansurbek (+998 97 422 99 92)
+// Shifokor: Dr. Ismailov Muhammad (+998 33 121 21 31)
+// WebApp: https://dentaluz2.netlify.app
 // ====================================================================
 
 import dotenv from 'dotenv';
@@ -8,61 +11,123 @@ import { supabase, logNotification } from './supabase.js';
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8880891529:AAEnaYtrY-QhGy22S4jyPU0ZaNMdpS-MPW0';
-const WEBAPP_URL = process.env.WEBAPP_URL || 'http://localhost:3000';
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
+const WEBAPP_URL = process.env.WEBAPP_URL || 'https://dentaluz2.netlify.app';
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '1433285502';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const CLINIC_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
 
-// Foydalanuvchilarning bosqichma-bosqich navbat olish holati (In-memory session state)
+// Foydalanuvchilarning bosqichma-bosqich navbat olish sessiyalari
 const userSessions = new Map();
 
-// Boshlang'ich klinika ma'lumotlari
-export const SERVICES_LIST = [
-  { id: 'srv_1', name: "Breket o'rnatish", price: 3500000, duration: 60 },
-  { id: 'srv_2', name: "Svetovoy plomba", price: 280000, duration: 40 },
-  { id: 'srv_3', name: "Tish qo'ydirish (Implant)", price: 3200000, duration: 60 },
-  { id: 'srv_4', name: "Tish oldirish (Sug'urish)", price: 200000, duration: 30 },
-  { id: 'srv_5', name: "Tish tozalash (Air Flow)", price: 300000, duration: 30 },
-  { id: 'srv_6', name: "Ko'rik va maslahat", price: 50000, duration: 20 }
+// Standart xizmatlar (Admin panelda yangilansa, bazadan avtomatik olinadi)
+export const DEFAULT_SERVICES = [
+  { id: 'c6666666-6666-6666-6666-666666666666', name: "Breket o'rnatish", price: 3500000, duration: 60 },
+  { id: 'c2222222-2222-2222-2222-222222222222', name: "Svetovoy plomba", price: 280000, duration: 40 },
+  { id: 'c7777777-7777-7777-7777-777777777777', name: "Tish qo'ydirish (Implant)", price: 3200000, duration: 60 },
+  { id: 'c5555555-5555-5555-5555-555555555555', name: "Tish oldirish (Sug'urish)", price: 200000, duration: 30 },
+  { id: 'c3333333-3333-3333-3333-333333333333', name: "Tish tozalash (Air Flow)", price: 300000, duration: 30 },
+  { id: 'c1111111-1111-1111-1111-111111111111', name: "Ko'rik va maslahat", price: 50000, duration: 20 }
 ];
 
+// Faqat 2 ta asosiy shifokor
 export const DOCTORS_LIST = [
-  { id: 'doc_1', name: 'Dr. Ismailov Mansurbek', specialty: 'Bosh shifokor, Ortodont', phone: '+998 97 422 99 92', room: '1-xona' },
-  { id: 'doc_2', name: 'Dr. Ismailov Muhammad', specialty: 'Stomatolog-Terapevt', phone: '+998 33 121 21 31', room: '2-xona' }
+  { 
+    id: 'd1111111-1111-1111-1111-111111111111', 
+    name: 'Dr. Ismailov Mansurbek', 
+    specialty: 'Ortodont / Bosh shifokor', 
+    phone: '+998 97 422 99 92', 
+    room: '1-xona' 
+  },
+  { 
+    id: 'd2222222-2222-2222-2222-222222222222', 
+    name: 'Dr. Ismailov Muhammad', 
+    specialty: 'Stomatolog-Terapevt', 
+    phone: '+998 33 121 21 31', 
+    room: '2-xona' 
+  }
 ];
 
 export const TIME_SLOTS = ['09:30', '10:30', '11:30', '14:30', '15:30', '16:30', '17:30'];
 
-// Yordamchi: Telegram API ga so'rov yuborish
-export async function callTelegramApi(method, payload) {
-  if (!BOT_TOKEN) return { ok: false, error: 'Token yo\'q' };
+// Dinamik xizmatlar va narxlarni Supabase bazasidan olish
+export async function getServices() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name, price, duration_minutes')
+        .eq('is_active', true)
+        .order('price', { ascending: false });
 
-  try {
-    const res = await fetch(`${TELEGRAM_API}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    return await res.json();
-  } catch (error) {
-    console.error(`Telegram API xatosi (${method}):`, error.message);
-    return { ok: false, error: error.message };
+      if (!error && data && data.length > 0) {
+        return data.map(s => ({
+          id: s.id,
+          name: s.name,
+          price: Number(s.price),
+          duration: s.duration_minutes || 30
+        }));
+      }
+    } catch (err) {
+      console.warn('Supabase xizmatlarini yuklashda xato:', err.message);
+    }
+  }
+  return DEFAULT_SERVICES;
+}
+
+// Telegram API ga so'rov yuborish
+export async function callTelegramApi(method, payload) {
+  if (!BOT_TOKEN) return { ok: false, error: "Bot token kiritilmagan" };
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${TELEGRAM_API}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (error) {
+      if (attempt === 3) {
+        console.error(`Telegram API xatosi (${method}):`, error.message);
+        return { ok: false, error: error.message };
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
 }
 
-// Bot buyruqlari menyusini Telegramda ro'yxatdan o'tkazish
+// Narxni chiroyli formatlash
+function formatPrice(p) {
+  return new Intl.NumberFormat('uz-UZ').format(p) + " so'm";
+}
+
+// Bot buyruqlari va pastki menyu tugmasini sozlash
 export async function setupBotCommands() {
+  await callTelegramApi('setMyName', { name: 'ORTHODONT-M' });
+
+  await callTelegramApi('setMyDescription', { 
+    description: `🦷 ORTHODONT-M Stomatologiya Markazining rasmiy boti.\n\n` +
+      `Bizning shifokorlarimiz:\n` +
+      `👨‍⚕️ Dr. Ismailov Mansurbek (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
+      `👨‍⚕️ Dr. Ismailov Muhammad (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
+      `Online navbat olish uchun bot yoki WebApp'dan foydalaning!`
+  });
+
+  await callTelegramApi('setMyShortDescription', { 
+    short_description: `ORTHODONT-M Stomatologiya Markaziga navbat olish boti` 
+  });
+
   await callTelegramApi('setMyCommands', {
     commands: [
       { command: 'start', description: 'Botni ishga tushirish va asosiy menyu' },
       { command: 'navbat', description: 'Tezkor qabulga navbat olish' },
       { command: 'buyurtmalarim', description: 'Mening navbatlarim' },
-      { command: 'manzil', description: 'Klinika manzili va ish vaqti' },
+      { command: 'manzil', description: 'Klinika manzili va aloqa' },
       { command: 'bekor', description: 'Joriy amalni bekor qilish' }
     ]
   });
 
-  // Pastki chap burchakdagi doimiy Menu tugmasi (WebApp)
   await callTelegramApi('setChatMenuButton', {
     menu_button: {
       type: 'web_app',
@@ -74,13 +139,14 @@ export async function setupBotCommands() {
 
 // 1. Asosiy menyu va /start xabari
 export async function sendWelcomeMessage(chatId, firstName = 'Hurmatli mijoz') {
-  userSessions.delete(chatId); // holatni tozalash
+  userSessions.delete(chatId);
 
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
     `🦷 <b>ORTHODONT-M Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
     `Bizning shifokorlarimiz:\n` +
     `👨‍⚕️ <b>Dr. Ismailov Mansurbek</b> (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
     `👨‍⚕️ <b>Dr. Ismailov Muhammad</b> (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
+    `📍 Manzil: Toshkent sh., Minor metro bekati yaqinida\n\n` +
     `👇 <b>Qabulga yozilish uchun qulay usulni tanlang:</b>`;
 
   const replyMarkup = {
@@ -110,7 +176,6 @@ export async function sendWelcomeMessage(chatId, firstName = 'Hurmatli mijoz') {
     ]
   };
 
-  // Doimiy klaviatura
   const mainKeyboard = {
     keyboard: [
       [{ text: '🦷 WebApp Mini App', web_app: { url: WEBAPP_URL } }, { text: '⚡ Tezkor Navbat Olish' }],
@@ -127,17 +192,18 @@ export async function sendWelcomeMessage(chatId, firstName = 'Hurmatli mijoz') {
   });
 }
 
-// 2. Bot orqali bosqichma-bosqich navbat olish jarayoni
+// 2. Bosqichma-bosqich navbat olish jarayoni
 
-// 1-qadam: Xizmat tanlash
+// 1-qadam: Xizmat tanlash (Admin paneldan o'zgartirilgan narxlar bilan)
 export async function promptServiceSelection(chatId, messageId = null) {
   userSessions.set(chatId, { step: 'select_service' });
 
-  const text = `📋 <b>1-Qadam: Kerakli xizmatni tanlang:</b>`;
+  const services = await getServices();
+  const text = `📋 <b>1-Qadam: Kerakli xizmatni tanlang:</b>\n<i>(Narxlar klinika boshqaruv paneliga muvofiq)</i>`;
 
-  const inline_keyboard = SERVICES_LIST.map(s => ([
+  const inline_keyboard = services.map(s => ([
     {
-      text: `${s.name} — ${new Intl.NumberFormat('uz-UZ').format(s.price)} so'm`,
+      text: `${s.name} — ${formatPrice(s.price)}`,
       callback_data: `service_${s.id}`
     }
   ]));
@@ -162,7 +228,7 @@ export async function promptServiceSelection(chatId, messageId = null) {
   });
 }
 
-// 2-qadam: Shifokor tanlash
+// 2-qadam: Shifokor tanlash (Faqat 2 ta shifokor)
 export async function promptDoctorSelection(chatId, messageId = null) {
   const session = userSessions.get(chatId) || {};
   session.step = 'select_doctor';
@@ -210,7 +276,7 @@ export async function promptDateSelection(chatId, messageId = null) {
   const weekdays = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
   const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     if (d.getDay() === 0) continue; // Yakshanba dam olish
@@ -220,6 +286,7 @@ export async function promptDateSelection(chatId, messageId = null) {
     const formatted = `${label}, ${d.getDate()} ${months[d.getMonth()]}`;
 
     days.push({ dateStr, formatted });
+    if (days.length >= 4) break;
   }
 
   const text = `📅 <b>3-Qadam: Qabul kunini tanlang:</b>`;
@@ -263,7 +330,6 @@ export async function promptTimeSelection(chatId, messageId = null) {
   const text = `⏰ <b>4-Qadam: Qulay qabul soatini tanlang:</b>\n` +
     `Tanlangan sana: <b>${session.date}</b>`;
 
-  // Soatlarni 2 ustunda chiroyli taxlash
   const inline_keyboard = [];
   for (let i = 0; i < TIME_SLOTS.length; i += 2) {
     const row = [
@@ -304,8 +370,8 @@ export async function promptContactInput(chatId) {
   session.step = 'awaiting_contact';
   userSessions.set(chatId, session);
 
-  const text = `📱 <b>Yakuniy qadam: Telefon raqamingizni tasdiqlang.</b>\n\n` +
-    `Shifokor siz bilan bog'lanishi va qabulni tasdiqlashi uchun pastdagi <b>"📱 Raqamimni ulashish"</b> tugmasini bosing yoki raqamingizni yozib yuboring (masalan: +998901234567):`;
+  const text = `📱 <b>Yakuniy qadam: Telefon raqamingizni yuboring.</b>\n\n` +
+    `Shifokor siz bilan bog'lanishi uchun pastdagi <b>"📱 Raqamimni ulashish"</b> tugmasini bosing yoki raqamingizni yozib yuboring (masalan: +998971234567):`;
 
   const reply_markup = {
     keyboard: [
@@ -351,20 +417,31 @@ export async function completeBooking(chatId, phone, user) {
     created_via: 'telegram_bot'
   };
 
-  // Supabase mavjud bo'lsa saqlash
+  // Supabase bazasiga to'liq saqlash
   if (supabase) {
     try {
+      const parts = session.time.split(':');
+      const h = parseInt(parts[0], 10) || 10;
+      const m = parseInt(parts[1], 10) || 0;
+      const total = h * 60 + m + (session.service.duration || 30);
+      const endH = Math.floor(total / 60) % 24;
+      const endM = total % 60;
+      const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`;
+
       await supabase.from('appointments').insert([{
-        doctor_name: bookingData.doctor_name,
-        service_name: bookingData.service_name,
-        service_price: bookingData.service_price,
-        appointment_date: bookingData.appointment_date,
-        start_time: bookingData.start_time,
-        patient_name: bookingData.patient_name,
-        patient_phone: bookingData.patient_phone,
+        clinic_id: CLINIC_ID,
+        doctor_id: session.doctor.id,
+        service_id: session.service.id,
+        patient_name: patientName,
+        patient_phone: phone,
         patient_telegram_id: chatId,
+        appointment_date: session.date,
+        start_time: `${session.time}:00`,
+        end_time: endTime,
+        price_uzs: session.service.price,
         status: 'kutilmoqda',
-        created_via: 'telegram_bot'
+        booking_source: 'telegram_bot',
+        notes: `Bot orqali: ${session.service.name}`
       }]);
     } catch (e) {
       console.warn('Supabase bot orqali saqlashda xato:', e.message);
@@ -380,17 +457,17 @@ export async function completeBooking(chatId, phone, user) {
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `🔢 <b>Chipta ID:</b> #${bookingId}\n` +
     `🩺 <b>Xizmat:</b> ${bookingData.service_name}\n` +
+    `💰 <b>Narxi:</b> ${formatPrice(bookingData.service_price)}\n` +
     `👨‍⚕️ <b>Shifokor:</b> ${bookingData.doctor_name}\n` +
     `📅 <b>Sana:</b> ${bookingData.appointment_date}\n` +
     `⏰ <b>Soat:</b> ${bookingData.start_time}\n` +
     `👤 <b>Bemor:</b> ${bookingData.patient_name}\n` +
     `📞 <b>Aloqa:</b> ${bookingData.patient_phone}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Minor metro bekati, Amir Temur 45\n` +
-    `📞 <b>Klinika telefoni:</b> +998 71 200 44 22\n\n` +
+    `📍 <b>Manzil:</b> Toshkent sh., Minor metro bekati yaqinida\n` +
+    `📞 <b>Klinika telefoni:</b> +998 97 422 99 92 / +998 33 121 21 31\n\n` +
     `<i>Iltimos, qabul vaqtidan 10 daqiqa oldin yetib kelishingizni so'raymiz.</i>`;
 
-  // Asosiy menyuni tiklash
   const mainKeyboard = {
     keyboard: [
       [{ text: '🦷 WebApp Mini App', web_app: { url: WEBAPP_URL } }, { text: '⚡ Tezkor Navbat Olish' }],
@@ -406,7 +483,7 @@ export async function completeBooking(chatId, phone, user) {
     reply_markup: mainKeyboard
   });
 
-  // Admin yoki shifokorlar guruhiga bildirishnoma yuborish
+  // Admin yoki shifokorlarga bildirishnoma
   await notifyAdminNewBooking(bookingData);
   await logNotification(bookingId, chatId, 'patient', `Bot orqali yangi navbat olindi: #${bookingId}`);
 }
@@ -417,14 +494,14 @@ export async function sendAppointmentTicket(chatId, booking) {
 
   const text = `✅ <b>Sizning navbatingiz qabul qilindi!</b>\n\n` +
     `📋 <b>Qabul tafsilotlari:</b>\n` +
-    `• <b>Chipta ID:</b> #${booking.id ? String(booking.id).slice(-6).toUpperCase() : 'NEW'}\n` +
+    `• <b>Chipta:</b> #${booking.id ? String(booking.id).slice(-6).toUpperCase() : 'YANGI'}\n` +
     `• <b>Xizmat:</b> ${booking.service_name || "Stomatologiya ko'rigi"}\n` +
-    `• <b>Shifokor:</b> ${booking.doctor_name || "Navbatchi shifokor"}\n` +
+    `• <b>Shifokor:</b> ${booking.doctor_name || "Dr. Ismailov Mansurbek"}\n` +
     `• <b>Sana:</b> 📅 ${booking.appointment_date}\n` +
     `• <b>Vaqt:</b> ⏰ ${booking.start_time}\n` +
     `• <b>Bemor:</b> ${booking.patient_name}\n\n` +
-    `📍 <b>Manzil:</b> Minor metro, Amir Temur 45\n` +
-    `📞 <b>Telefon:</b> +998 71 200 44 22`;
+    `📍 <b>Manzil:</b> ORTHODONT-M (Minor metro bekati yaqinida)\n` +
+    `📞 <b>Aloqa:</b> +998 97 422 99 92 / +998 33 121 21 31`;
 
   return await callTelegramApi('sendMessage', {
     chat_id: chatId,
@@ -444,7 +521,7 @@ export async function notifyAdminNewBooking(booking) {
     `👨‍⚕️ <b>Shifokor:</b> ${booking.doctor_name}\n` +
     `📅 <b>Sana:</b> ${booking.appointment_date}\n` +
     `⏰ <b>Soat:</b> ${booking.start_time}\n` +
-    `🌐 <b>Manba:</b> ${booking.created_via === 'telegram_bot' ? 'Telegram Bot' : 'Telegram WebApp'}`;
+    `🌐 <b>Manba:</b> ${booking.booking_source === 'telegram_bot' ? 'Telegram Bot' : 'Telegram WebApp'}`;
 
   return await callTelegramApi('sendMessage', {
     chat_id: targetChatId,
@@ -458,19 +535,20 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
 
   let statusText = '';
   if (newStatus === 'tasdiqlandi') {
-    statusText = '🟢 <b>Sizning navbatingiz shifokor tomonidan TASDIQLANDI!</b>\n\nSizni belgilangan vaqtda kutamiz.';
+    statusText = '🟢 <b>Sizning navbatingiz shifokor tomonidan TASDIQLANDI!</b>\n\nSizni belgilangan vaqtda klinikamizda kutamiz.';
   } else if (newStatus === 'bekor_qilindi') {
     statusText = '🔴 <b>Sizning navbatingiz bekor qilindi.</b>\n\nBoshqa vaqtni tanlash uchun qayta navbat olishingiz mumkin.';
   } else if (newStatus === 'yakunlandi') {
-    statusText = '✅ <b>Muolajangiz muvaffaqiyatli yakunlandi!</b>\n\nDentaCare klinikasini tanlaganingiz uchun tashakkur!';
+    statusText = '✅ <b>Muolajangiz muvaffaqiyatli yakunlandi!</b>\n\nORTHODONT-M klinikasini tanlaganingiz uchun tashakkur!';
   } else {
-    statusText = `ℹ️ <b>Navbatingiz holati:</b> ${newStatus}`;
+    statusText = `ℹ️ <b>Navbatingiz holati yangilandi:</b> ${newStatus}`;
   }
 
   const text = `${statusText}\n\n` +
     `• <b>Sana:</b> ${booking.appointment_date} (${booking.start_time})\n` +
-    `• <b>Shifokor:</b> ${booking.doctor_name}\n` +
-    `• <b>Xizmat:</b> ${booking.service_name}`;
+    `• <b>Shifokor:</b> ${booking.doctor_name || 'Dr. Ismailov Mansurbek'}\n` +
+    `• <b>Xizmat:</b> ${booking.service_name || 'Stomatologiya xizmati'}\n` +
+    `📍 <b>ORTHODONT-M</b> (Minor metro yaqinida)`;
 
   return await callTelegramApi('sendMessage', {
     chat_id: chatId,
@@ -482,12 +560,13 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
 // 4. Klinika ma'lumotlari va Mening navbatlarim
 export async function sendClinicInfo(chatId) {
   const text = `🏥 <b>ORTHODONT-M Zamonaviy Stomatologiya Markazi</b>\n\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani\n` +
-    `🚇 <b>Mo'ljal:</b> Minor metro bekati yaqinida\n` +
+    `📍 <b>Manzil:</b> Toshkent sh., Minor metro bekati yaqinida\n` +
     `⏰ <b>Ish vaqti:</b> 09:00 - 19:00 (Dushanba — Shanba)\n\n` +
-    `👨‍⚕️ <b>Dr. Ismailov Mansurbek:</b> +998 97 422 99 92\n` +
-    `👨‍⚕️ <b>Dr. Ismailov Muhammad:</b> +998 33 121 21 31\n\n` +
-    `✨ <i>Bizning afzalliklarimiz: Yuqori sifatli breketlar, 100% steril tozalik va og'riqsiz muolajalar.</i>`;
+    `👨‍⚕️ <b>Dr. Ismailov Mansurbek (Ortodont / Bosh shifokor):</b>\n` +
+    `📞 +998 97 422 99 92\n\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Muhammad (Stomatolog-Terapevt):</b>\n` +
+    `📞 +998 33 121 21 31\n\n` +
+    `✨ <i>Bizning xizmatlar: Breket o'rnatish, Svetovoy plomba, Implant qo'yish, Tish sug'urish, Air Flow tozalash.</i>`;
 
   const inline_keyboard = [
     [{ text: '🦷 Navbat Olish (WebApp)', web_app: { url: WEBAPP_URL } }]
@@ -503,10 +582,10 @@ export async function sendClinicInfo(chatId) {
 
 export async function sendMyBookings(chatId) {
   const text = `📋 <b>Sizning navbatlaringiz:</b>\n\n` +
-    `Sizning faol navbatlaringiz holatini ko'rish va bekor qilish uchun quyidagi <b>"Mening Navbatlarim"</b> tugmasi orqali Mini App'ni oching:`;
+    `Sizning barcha faol navbatlaringiz holatini ko'rish uchun quyidagi tugma orqali WebApp'ni oching:`;
 
   const inline_keyboard = [
-    [{ text: '📱 Navbatlarimni Ko\'rish', web_app: { url: `${WEBAPP_URL}?tab=my-bookings` } }]
+    [{ text: "📱 Navbatlarimni Ko'rish", web_app: { url: `${WEBAPP_URL}?tab=my-bookings` } }]
   ];
 
   return await callTelegramApi('sendMessage', {
@@ -517,18 +596,26 @@ export async function sendMyBookings(chatId) {
   });
 }
 
-// 5. Polling mexanizmi (Yangi xabarlarni eshitish va javob berish)
+// 5. Polling mexanizmi (24/7 Yangi xabarlarni eshitish va javob berish)
 let lastUpdateId = 0;
 
 export async function startBotPolling() {
   if (!BOT_TOKEN) return;
 
-  console.log(`🤖 Telegram Bot (@dentalclinicuzbot) ishga tushdi...`);
+  // Har doim polling oldidan eski webhookni tozalash
+  try {
+    await callTelegramApi('deleteWebhook', { drop_pending_updates: false });
+    console.log('✅ Webhook tozalandi, long polling rejimiga o\'tildi.');
+  } catch (err) {
+    console.warn('Webhook tozalash xatosi:', err.message);
+  }
+
+  console.log(`🤖 Telegram Bot (@dentalclinicuzbot) polling boshlandi...`);
   await setupBotCommands();
 
   const poll = async () => {
     try {
-      const response = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=25`);
+      const response = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=20`);
       const data = await response.json();
 
       if (data.ok && data.result && data.result.length > 0) {
@@ -555,10 +642,10 @@ export async function startBotPolling() {
               continue;
             }
 
-            // Agar kontakt kutilyotgan paytda foydalanuvchi telefon raqamini yozgan bo'lsa
+            // Telefon kiritish kutilayotgan holat
             const session = userSessions.get(chatId);
             if (session && session.step === 'awaiting_contact') {
-              if (text.length >= 9) {
+              if (text.length >= 7) {
                 await completeBooking(chatId, text, user);
                 continue;
               }
@@ -585,14 +672,15 @@ export async function startBotPolling() {
             const messageId = query.message.message_id;
             const data = query.data;
 
-            // Telegram ga javob qaytarish (loaderni to'xtatish)
+            // Telegram ga yuklanish indikatorini to'xtatish haqida javob
             callTelegramApi('answerCallbackQuery', { callback_query_id: query.id }).catch(() => {});
 
             if (data === 'start_bot_booking') {
               await promptServiceSelection(chatId, messageId);
             } else if (data.startsWith('service_')) {
               const serviceId = data.replace('service_', '');
-              const srv = SERVICES_LIST.find(s => s.id === serviceId) || SERVICES_LIST[0];
+              const services = await getServices();
+              const srv = services.find(s => s.id === serviceId) || services[0];
               const session = userSessions.get(chatId) || {};
               session.service = srv;
               userSessions.set(chatId, session);
@@ -634,9 +722,9 @@ export async function startBotPolling() {
         }
       }
     } catch (e) {
-      // Vaqtincha tarmoq uzilishlarida tinchgina kutish
+      // Tarmoq uzilishlarida jim turish
     }
-    setTimeout(poll, 1500);
+    setTimeout(poll, 1000);
   };
 
   poll();
