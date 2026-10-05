@@ -27,59 +27,67 @@ import {
 import { 
   INITIAL_CLINIC, 
   INITIAL_DOCTORS, 
-  INITIAL_SERVICES, 
-  INITIAL_PATIENTS, 
-  INITIAL_APPOINTMENTS, 
-  INITIAL_DENTAL_RECORDS 
+  INITIAL_SERVICES 
 } from './data/mockAdminData';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
 
-  // States - boshlang'ich ma'lumotlar bilan tezkor ochiladi
-  const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
-  const [patients, setPatients] = useState(INITIAL_PATIENTS);
+  // States - to'g'ridan-to'g'ri bazadan toza ma'lumotlar bilan ishlaydi
+  const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState(INITIAL_DOCTORS);
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [clinic, setClinic] = useState(INITIAL_CLINIC);
-  const [dentalRecords, setDentalRecords] = useState(INITIAL_DENTAL_RECORDS);
+  const [dentalRecords, setDentalRecords] = useState({});
 
   // Modal holati
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
 
-  // Ma'lumotlarni Supabase'dan fonda yuklab olish
+  // Ma'lumotlarni to'g'ridan-to'g'ri Supabase bazasidan yuklab olish
   const loadAllData = async () => {
-    try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('timeout')), 4000)
-      );
-      const fetchPromise = Promise.all([
-        getAppointments(),
-        getPatients(),
-        getDoctors(),
-        getServices(),
-        getClinicInfo(),
-        getDentalRecords()
-      ]);
-      const [appData, patData, docData, srvData, clinicData, dentalData] = await Promise.race([
-        fetchPromise,
-        timeoutPromise
-      ]);
-
-      if (Array.isArray(appData) && appData.length > 0) setAppointments(appData);
-      if (Array.isArray(patData) && patData.length > 0) setPatients(patData);
-      if (Array.isArray(docData) && docData.length > 0) setDoctors(docData);
-      if (Array.isArray(srvData) && srvData.length > 0) setServices(srvData);
-      if (clinicData) setClinic(clinicData);
-      if (dentalData && typeof dentalData === 'object') {
-        setDentalRecords(dentalData);
+    getAppointments().then(appData => {
+      if (Array.isArray(appData)) {
+        setAppointments(appData);
       }
-    } catch (e) {
-      console.warn('Supabase ma\'lumotlarini yangilash ogohlantirish:', e.message);
-    }
+    }).catch(err => console.warn('Appointments yuklashda xato:', err));
+
+    getPatients().then(patData => {
+      if (Array.isArray(patData)) {
+        setPatients(patData);
+      }
+    }).catch(err => console.warn('Patients yuklashda xato:', err));
+
+    getDoctors().then(docData => {
+      if (Array.isArray(docData) && docData.length > 0) setDoctors(docData);
+    }).catch(() => {});
+
+    getServices().then(srvData => {
+      if (Array.isArray(srvData) && srvData.length > 0) setServices(srvData);
+    }).catch(() => {});
+
+    getClinicInfo().then(clinicData => {
+      if (clinicData) setClinic(clinicData);
+    }).catch(() => {});
+
+    getDentalRecords().then(dentalData => {
+      if (dentalData && typeof dentalData === 'object') setDentalRecords(dentalData);
+    }).catch(() => {});
   };
 
   useEffect(() => {
+    // Brauzer xotirasidagi har qanday eski sun'iy (mock) yozuvlarni tozalash
+    try {
+      const storedApp = localStorage.getItem('dental_admin_appointments');
+      if (storedApp && (storedApp.includes('Azamat') || storedApp.includes('Shahnoza'))) {
+        localStorage.removeItem('dental_admin_appointments');
+      }
+      const storedPat = localStorage.getItem('dental_admin_patients');
+      if (storedPat && (storedPat.includes('Azamat') || storedPat.includes('Shahnoza'))) {
+        localStorage.removeItem('dental_admin_patients');
+      }
+    } catch (e) {}
+
     loadAllData();
   }, []);
 

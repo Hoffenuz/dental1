@@ -75,7 +75,7 @@ const saveStorage = (key, data) => {
   } catch (e) {}
 };
 
-// 1. Appointments API (Real Supabase Joins & Transformers)
+// 1. Appointments API (To'g'ridan-to'g'ri Supabase bilan ishlaydi, soxta mock ma'lumotlarsiz)
 export const getAppointments = async () => {
   if (supabase) {
     try {
@@ -86,34 +86,39 @@ export const getAppointments = async () => {
           doctors (id, full_name, specialty),
           services (id, name, price_uzs)
         `)
-        .order('appointment_date', { ascending: true })
+        .order('appointment_date', { ascending: false })
         .order('start_time', { ascending: true });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
-        return data.map(a => ({
+      if (!error && Array.isArray(data)) {
+        const mapped = data.map(a => ({
           ...a,
           id: a.id,
           doctor_id: a.doctor_id,
-          doctor_name: a.doctors?.full_name || a.doctor_name || 'Dr. Rustam Xoliqov',
-          doctor_specialty: a.doctors?.specialty || a.doctor_specialty || 'Jarroh-Implantolog',
+          doctor_name: a.doctors?.full_name || a.doctor_name || 'Dr. Ismailov Mansurbek',
+          doctor_specialty: a.doctors?.specialty || a.doctor_specialty || 'Ortodont',
           service_id: a.service_id,
-          service_name: a.services?.name || a.service_name || "Birlamchi ko'rik va konsultatsiya",
-          service_price: Number(a.services?.price_uzs || a.price_uzs || 50000),
+          service_name: a.services?.name || a.service_name || "Stomatologiya ko'rigi",
+          service_price: Number(a.services?.price_uzs || a.price_uzs || 0),
           appointment_date: a.appointment_date || new Date().toISOString().split('T')[0],
           start_time: (a.start_time || '10:00').slice(0, 5),
           end_time: (a.end_time || '10:30').slice(0, 5),
           patient_name: a.patient_name || 'Bemor',
-          patient_phone: a.patient_phone || '+998 90 000 00 00',
+          patient_phone: a.patient_phone || '',
           patient_complaint: a.notes || '',
           status: a.status || 'kutilmoqda',
           created_via: a.booking_source === 'telegram_webapp' ? 'webapp' : 'bot'
         }));
+        saveStorage(STORAGE_KEYS.APPOINTMENTS, mapped);
+        return mapped;
       }
     } catch (e) {
-      console.warn('Supabase appointments olishda xato, local ishlatilmoqda', e);
+      console.warn('Supabase appointments olishda xato:', e.message);
     }
   }
-  return loadStorage(STORAGE_KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS);
+  const fallback = loadStorage(STORAGE_KEYS.APPOINTMENTS, []);
+  return Array.isArray(fallback)
+    ? fallback.filter(a => a.patient_name !== 'Azamat Aliyev' && a.patient_name !== 'Shahnoza Normurodova')
+    : [];
 };
 
 export const updateAppointmentStatus = async (id, status) => {
@@ -121,11 +126,11 @@ export const updateAppointmentStatus = async (id, status) => {
     try {
       await supabase.from('appointments').update({ status }).eq('id', id);
     } catch (e) {
-      console.warn('Supabase status yangilashda xato', e);
+      console.warn('Supabase status yangilashda xato:', e.message);
     }
   }
 
-  const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS);
+  const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, []);
   const updated = current.map(item => item.id === id ? { ...item, status } : item);
   saveStorage(STORAGE_KEYS.APPOINTMENTS, updated);
   return updated;
@@ -166,7 +171,7 @@ export const createManualAppointment = async (bookingData) => {
     }
   }
 
-  const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS);
+  const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, []);
   const newBooking = {
     id: 'b-' + Math.random().toString(36).substring(2, 9),
     ...bookingData,
@@ -201,7 +206,7 @@ export const getPatients = async () => {
       console.warn('Supabase bemorlarni olishda xato', e);
     }
   }
-  return loadStorage(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+  return loadStorage(STORAGE_KEYS.PATIENTS, []);
 };
 
 export const savePatient = async (patientData) => {
@@ -234,7 +239,7 @@ export const savePatient = async (patientData) => {
     }
   }
 
-  const current = loadStorage(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+  const current = loadStorage(STORAGE_KEYS.PATIENTS, []);
   let updated;
   if (patientData.id) {
     const exists = current.some(p => p.id === patientData.id);
@@ -272,7 +277,7 @@ export const deletePatient = async (patientId) => {
     }
   }
 
-  const current = loadStorage(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+  const current = loadStorage(STORAGE_KEYS.PATIENTS, []);
   const updated = current.filter(p => p.id !== patientId);
   saveStorage(STORAGE_KEYS.PATIENTS, updated);
 
