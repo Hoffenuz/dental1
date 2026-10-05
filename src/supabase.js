@@ -252,24 +252,32 @@ export const savePatient = async (patientData) => {
 export const getDentalRecords = async () => {
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('dental_records').select('*');
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const recordsMap = { ...INITIAL_DENTAL_RECORDS };
+      const { data, error } = await supabase
+        .from('dental_records')
+        .select('*')
+        .order('tooth_number', { ascending: true });
+
+      if (!error && Array.isArray(data)) {
+        const recordsMap = {};
         data.forEach(r => {
           if (!recordsMap[r.patient_id]) {
             recordsMap[r.patient_id] = {};
           }
           recordsMap[r.patient_id][r.tooth_number] = {
-            condition: r.status,
-            status: r.status,
+            id: r.id,
+            condition: r.status || 'soglom',
+            status: r.status || 'soglom',
             diagnosis: r.diagnosis || '',
             treatment_applied: r.treatment_applied || '',
-            treatment: r.treatment_applied || '',
             cost: Number(r.cost_uzs) || 0,
             cost_uzs: Number(r.cost_uzs) || 0,
-            date: r.treatment_date || new Date().toISOString().split('T')[0]
+            treatment_date: r.treatment_date || (r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            date: r.treatment_date || (r.created_at ? r.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            doctor_id: r.doctor_id || null,
+            notes: r.notes || ''
           };
         });
+        saveStorage(STORAGE_KEYS.DENTAL_RECORDS, recordsMap);
         return recordsMap;
       }
     } catch (e) {
@@ -280,29 +288,85 @@ export const getDentalRecords = async () => {
 };
 
 export const updateToothRecord = async (patientId, toothNumber, toothData) => {
-  if (supabase && patientId) {
+  if (!patientId || !toothNumber) return {};
+
+  const toothNum = Number(toothNumber);
+  const status = toothData.condition || toothData.status || 'soglom';
+  const isHealthy = status === 'soglom';
+
+  if (supabase) {
     try {
-      await supabase.from('dental_records').insert([{
-        patient_id: patientId,
-        tooth_number: Number(toothNumber),
-        status: toothData.condition || toothData.status || 'soglom',
-        diagnosis: toothData.diagnosis || null,
-        treatment_applied: toothData.treatment_applied || null,
-        cost_uzs: Number(toothData.cost) || 0,
-        treatment_date: new Date().toISOString().split('T')[0]
-      }]);
+      // 1. Avval mavjud yozuvni tekshirish
+      const { data: existing } = await supabase
+        .from('dental_records')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('tooth_number', toothNum)
+        .maybeSingle();
+
+      if (isHealthy) {
+        // Agar tish sog'lom qilinsa, bazadagi muammo yozuvini o'chiramiz
+        if (existing?.id) {
+          await supabase.from('dental_records').delete().eq('id', existing.id);
+        }
+      } else if (existing?.id) {
+        // Mavjud yozuvni yangilash
+        await supabase
+          .from('dental_records')
+          .update({
+            status: status,
+            diagnosis: toothData.diagnosis || null,
+            treatment_applied: toothData.treatment_applied || toothData.treatment || null,
+            cost_uzs: Number(toothData.cost) || Number(toothData.cost_uzs) || 0,
+            treatment_date: toothData.treatment_date || toothData.date || new Date().toISOString().split('T')[0],
+            doctor_id: toothData.doctor_id || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        // Yangi yozuv qo'shish
+        await supabase
+          .from('dental_records')
+          .insert([{
+            patient_id: patientId,
+            tooth_number: toothNum,
+            status: status,
+            diagnosis: toothData.diagnosis || null,
+            treatment_applied: toothData.treatment_applied || toothData.treatment || null,
+            cost_uzs: Number(toothData.cost) || Number(toothData.cost_uzs) || 0,
+            treatment_date: toothData.treatment_date || toothData.date || new Date().toISOString().split('T')[0],
+            doctor_id: toothData.doctor_id || null
+          }]);
+      }
     } catch (e) {
-      console.warn('Supabase dental record saqlashda xato', e);
+      console.warn('Supabase dental record saqlashda xato:', e.message);
     }
   }
 
+  // Lokal xotirani ham sinxronlash
   const allRecords = loadStorage(STORAGE_KEYS.DENTAL_RECORDS, INITIAL_DENTAL_RECORDS);
   if (!allRecords[patientId]) {
     allRecords[patientId] = {};
   }
-  allRecords[patientId][toothNumber] = toothData;
+
+  if (isHealthy) {
+    delete allRecords[patientId][toothNum];
+  } else {
+    allRecords[patientId][toothNum] = {
+      ...toothData,
+      tooth_number: toothNum,
+      condition: status,
+      status: status,
+      cost: Number(toothData.cost) || Number(toothData.cost_uzs) || 0,
+      cost_uzs: Number(toothData.cost) || Number(toothData.cost_uzs) || 0
+    };
+  }
   saveStorage(STORAGE_KEYS.DENTAL_RECORDS, allRecords);
   return allRecords[patientId];
+};
+
+export const deleteToothRecord = async (patientId, toothNumber) => {
+  return updateToothRecord(patientId, toothNumber, { condition: 'soglom', status: 'soglom' });
 };
 
 // 4. Doctors API (Faqat 2 ta faol shifokor)

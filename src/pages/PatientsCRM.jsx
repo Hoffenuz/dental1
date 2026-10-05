@@ -19,8 +19,10 @@ export default function PatientsCRM({
   patients = [],
   appointments = [],
   dentalRecords = {},
+  doctors = [],
   onSavePatient,
-  onUpdateTooth
+  onUpdateTooth,
+  onDeleteTooth
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(patients[0] || null);
@@ -117,6 +119,9 @@ export default function PatientsCRM({
             ) : (
               filteredPatients.map(patient => {
                 const isSelected = selectedPatient?.id === patient.id;
+                const pRecords = dentalRecords[patient.id] || {};
+                const problemCount = Object.values(pRecords).filter(r => r && r.condition && r.condition !== 'soglom').length;
+
                 return (
                   <div
                     key={patient.id}
@@ -139,12 +144,26 @@ export default function PatientsCRM({
                       {patient.phone}
                     </p>
 
-                    {patient.allergies && patient.allergies !== 'Yo\'q' && (
-                      <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded flex items-center gap-1 mt-1.5 w-fit">
-                        <AlertTriangle className="w-2.5 h-2.5" />
-                        {patient.allergies}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      {problemCount > 0 ? (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <span>🦷</span>
+                          <span>{problemCount} ta muammo</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <span>🦷</span>
+                          <span>Sog'lom</span>
+                        </span>
+                      )}
+
+                      {patient.allergies && patient.allergies !== 'Yo\'q' && (
+                        <span className="text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          {patient.allergies}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -212,7 +231,9 @@ export default function PatientsCRM({
                 patientId={selectedPatient.id}
                 patientName={selectedPatient.full_name}
                 records={dentalRecords[selectedPatient.id] || {}}
+                doctors={doctors}
                 onUpdateTooth={onUpdateTooth}
+                onDeleteTooth={onDeleteTooth}
               />
 
               {/* Bemorning qabullar tarixi */}

@@ -20,7 +20,8 @@ import {
   getClinicInfo, 
   saveClinicInfo,
   getDentalRecords,
-  updateToothRecord
+  updateToothRecord,
+  deleteToothRecord
 } from './supabase';
 import { 
   INITIAL_CLINIC, 
@@ -113,12 +114,40 @@ export default function App() {
   };
 
   // Tish kartasini yangilash
-  const handleUpdateTooth = (patientId, toothNumber, toothData) => {
-    const updatedRecords = updateToothRecord(patientId, toothNumber, toothData);
-    setDentalRecords(prev => ({
-      ...prev,
-      [patientId]: updatedRecords
-    }));
+  const handleUpdateTooth = async (patientId, toothNumber, toothData) => {
+    const toothNum = Number(toothNumber);
+    const isHealthy = (toothData.condition || toothData.status) === 'soglom';
+
+    // 1. Darhol optimistik UI yangilash
+    setDentalRecords(prev => {
+      const patientRecs = { ...(prev[patientId] || {}) };
+      if (isHealthy) {
+        delete patientRecs[toothNum];
+      } else {
+        patientRecs[toothNum] = {
+          ...toothData,
+          tooth_number: toothNum,
+          cost: Number(toothData.cost) || 0
+        };
+      }
+      return {
+        ...prev,
+        [patientId]: patientRecs
+      };
+    });
+
+    // 2. Supabase bazasi bilan saqlash
+    const updatedRecords = await updateToothRecord(patientId, toothNumber, toothData);
+    if (updatedRecords) {
+      setDentalRecords(prev => ({
+        ...prev,
+        [patientId]: updatedRecords
+      }));
+    }
+  };
+
+  const handleDeleteTooth = async (patientId, toothNumber) => {
+    return handleUpdateTooth(patientId, toothNumber, { condition: 'soglom', status: 'soglom' });
   };
 
   // Xizmat va narxni saqlash (User WebApp va botda ko'rinadi)
@@ -182,9 +211,11 @@ export default function App() {
             <PatientsCRM
               patients={patients}
               appointments={appointments}
+              doctors={doctors}
               dentalRecords={dentalRecords}
               onSavePatient={handleSavePatient}
               onUpdateTooth={handleUpdateTooth}
+              onDeleteTooth={handleDeleteTooth}
             />
           )}
 
