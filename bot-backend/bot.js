@@ -18,22 +18,17 @@ const userSessions = new Map();
 
 // Boshlang'ich klinika ma'lumotlari
 export const SERVICES_LIST = [
-  { id: 'srv_1', name: "Birlamchi ko'rik va konsultatsiya", price: 50000, duration: 20 },
-  { id: 'srv_2', name: "Svetovoy plomba (Germaniya)", price: 280000, duration: 45 },
-  { id: 'srv_3', name: "Professional tozalash (Air Flow)", price: 350000, duration: 40 },
-  { id: 'srv_4', name: "Kanal davolash (Pulpit)", price: 220000, duration: 50 },
-  { id: 'srv_5', name: "Og'riqsiz tish sug'urish", price: 200000, duration: 30 },
-  { id: 'srv_6', name: "Breket o'rnatish", price: 3500000, duration: 60 },
-  { id: 'srv_7', name: "Dental Implant (Osstem)", price: 3200000, duration: 60 },
-  { id: 'srv_8', name: "Bolalar tishini plombalash", price: 150000, duration: 30 }
+  { id: 'srv_1', name: "Breket o'rnatish", price: 3500000, duration: 60 },
+  { id: 'srv_2', name: "Svetovoy plomba", price: 280000, duration: 40 },
+  { id: 'srv_3', name: "Tish qo'ydirish (Implant)", price: 3200000, duration: 60 },
+  { id: 'srv_4', name: "Tish oldirish (Sug'urish)", price: 200000, duration: 30 },
+  { id: 'srv_5', name: "Tish tozalash (Air Flow)", price: 300000, duration: 30 },
+  { id: 'srv_6', name: "Ko'rik va maslahat", price: 50000, duration: 20 }
 ];
 
 export const DOCTORS_LIST = [
-  { id: 'doc_1', name: 'Dr. Rustam Xoliqov', specialty: 'Jarroh-Implantolog', room: 'Xona 1' },
-  { id: 'doc_2', name: 'Dr. Nilufar Karimova', specialty: 'Terapevt-Restavrator', room: 'Xona 2' },
-  { id: 'doc_3', name: 'Dr. Jasur Bekmurodov', specialty: 'Ortodont (Breketlar)', room: 'Xona 3' },
-  { id: 'doc_4', name: 'Dr. Madina Usmonova', specialty: 'Bolalar stomatologi', room: 'Xona 4' },
-  { id: 'doc_any', name: 'Ixtiyoriy bo\'sh shifokor', specialty: 'Tezroq qabul', room: 'Navbatchi' }
+  { id: 'doc_1', name: 'Dr. Ismailov Mansurbek', specialty: 'Bosh shifokor, Ortodont', phone: '+998 97 422 99 92', room: '1-xona' },
+  { id: 'doc_2', name: 'Dr. Ismailov Muhammad', specialty: 'Stomatolog-Terapevt', phone: '+998 33 121 21 31', room: '2-xona' }
 ];
 
 export const TIME_SLOTS = ['09:30', '10:30', '11:30', '14:30', '15:30', '16:30', '17:30'];
@@ -82,9 +77,11 @@ export async function sendWelcomeMessage(chatId, firstName = 'Hurmatli mijoz') {
   userSessions.delete(chatId); // holatni tozalash
 
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-    `🦷 <b>DentaCare Zamonaviy Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
-    `Bizning klinikamizda og'riqsiz davolash, zamonaviy implantatsiya, breketlar va estetik restavratsiya xizmatlari mavjud.\n\n` +
-    `👇 <b>Qabulga yozilish uchun o'zingizga qulay usulni tanlang:</b>`;
+    `🦷 <b>ORTHODONT-M Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
+    `Bizning shifokorlarimiz:\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Mansurbek</b> (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Muhammad</b> (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
+    `👇 <b>Qabulga yozilish uchun qulay usulni tanlang:</b>`;
 
   const replyMarkup = {
     inline_keyboard: [
@@ -484,13 +481,13 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
 
 // 4. Klinika ma'lumotlari va Mening navbatlarim
 export async function sendClinicInfo(chatId) {
-  const text = `🏥 <b>DentaCare Zamonaviy Stomatologiya Markazi</b>\n\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani, Amir Temur ko'chasi 45-uy\n` +
-    `🚇 <b>Mo'ljal:</b> Minor metro bekati yonida\n` +
-    `⏰ <b>Ish vaqti:</b> 09:00 - 20:00 (Dushanba — Shanba)\n` +
-    `📞 <b>Qabulxona:</b> +998 71 200 44 22\n` +
-    `🚨 <b>Tezkor aloqa:</b> +998 90 123 45 67\n\n` +
-    `✨ <i>Bizning afzalliklarimiz: 100% steril avtoklav tozaligi, Germaniya materiallari va og'riqsiz anesteziya.</i>`;
+  const text = `🏥 <b>ORTHODONT-M Zamonaviy Stomatologiya Markazi</b>\n\n` +
+    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani\n` +
+    `🚇 <b>Mo'ljal:</b> Minor metro bekati yaqinida\n` +
+    `⏰ <b>Ish vaqti:</b> 09:00 - 19:00 (Dushanba — Shanba)\n\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Mansurbek:</b> +998 97 422 99 92\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Muhammad:</b> +998 33 121 21 31\n\n` +
+    `✨ <i>Bizning afzalliklarimiz: Yuqori sifatli breketlar, 100% steril tozalik va og'riqsiz muolajalar.</i>`;
 
   const inline_keyboard = [
     [{ text: '🦷 Navbat Olish (WebApp)', web_app: { url: WEBAPP_URL } }]

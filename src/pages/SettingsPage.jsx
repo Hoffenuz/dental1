@@ -7,7 +7,7 @@ export default function SettingsPage({ clinic, onSaveClinic }) {
   const [phone, setPhone] = useState(clinic?.phone || '');
   const [address, setAddress] = useState(clinic?.address || '');
   const [workingHours, setWorkingHours] = useState(clinic?.working_hours || '');
-  const [telegramBot, setTelegramBot] = useState(clinic?.telegram_bot || '@DentaCareBookingBot');
+  const [telegramBot, setTelegramBot] = useState(clinic?.telegram_bot || '@dentalclinicuzbot');
   const [adminChatId, setAdminChatId] = useState(clinic?.telegram_admin_chat_id || '');
   const [botToken, setBotToken] = useState('');
   const [saved, setSaved] = useState(false);

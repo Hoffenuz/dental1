@@ -3,10 +3,8 @@ import {
   LayoutDashboard, 
   CalendarClock, 
   Users, 
-  UserCog, 
   Receipt, 
   Settings, 
-  Activity, 
   ExternalLink 
 } from 'lucide-react';
 
@@ -31,11 +29,6 @@ export default function Sidebar({ currentTab, setCurrentTab, counts }) {
       badge: counts?.patients ? counts.patients : null
     },
     { 
-      id: 'doctors', 
-      label: 'Shifokorlar & Jadval', 
-      icon: UserCog 
-    },
-    { 
       id: 'services', 
       label: 'Xizmatlar & Narxlar', 
       icon: Receipt 
@@ -56,10 +49,20 @@ export default function Sidebar({ currentTab, setCurrentTab, counts }) {
         </div>
         <div>
           <h1 className="font-extrabold text-base text-slate-800 tracking-tight leading-none">
-            DentaCare <span className="text-cyan-600 font-bold text-xs">CRM</span>
+            ORTHODONT<span className="text-cyan-600 font-bold text-sm">-M</span>
           </h1>
           <p className="text-[11px] text-slate-400 mt-1 font-medium">Stomatologiya Boshqaruvi</p>
         </div>
+      </div>
+
+      {/* Shifokorlar haqida qisqa ma'lumot */}
+      <div className="mx-3 mt-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] text-slate-600">
+        <div className="font-bold text-slate-700 flex items-center gap-1.5 mb-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Shifokorlar (2 ta):</span>
+        </div>
+        <p className="text-[10px] text-slate-500">👨‍⚕️ Ismailov Mansurbek</p>
+        <p className="text-[10px] text-slate-500">👨‍⚕️ Ismailov Muhammad</p>
       </div>
 
       {/* Navigation menu */}
@@ -107,7 +110,7 @@ export default function Sidebar({ currentTab, setCurrentTab, counts }) {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
           </div>
           <p className="text-[10px] text-slate-400 leading-snug">
-            Bemorlar uchun alohida domen orqali ishlaydi
+            Bemorlar uchun sodda navbat tizimi
           </p>
           <a
             href="https://dentaluz2.netlify.app/"

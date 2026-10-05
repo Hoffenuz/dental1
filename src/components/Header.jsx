@@ -17,8 +17,8 @@ export default function Header({ clinic, onOpenNewBooking, todayDate }) {
           <span className="capitalize">{currentDateFormatted}</span>
         </div>
         <span className="text-xs text-slate-400">|</span>
-        <span className="text-xs font-medium text-slate-600">
-          {clinic?.name || 'DentaCare Stomatologiya'}
+        <span className="text-xs font-semibold text-slate-800">
+          {clinic?.name || 'ORTHODONT-M'}
         </span>
       </div>
 

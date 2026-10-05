@@ -78,6 +78,16 @@ export default function ServicesManager({ services, onSaveService }) {
         </button>
       </div>
 
+      {/* Ma'lumot va sinxronizatsiya statusi */}
+      <div className="p-3.5 bg-cyan-50/80 border border-cyan-200/60 rounded-2xl flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5 text-cyan-900">
+          <span className="text-base">💡</span>
+          <span>
+            <strong>Avtomatik sinxronizatsiya:</strong> Bu yerda kiritilgan yoki o'zgartirilgan narxlar avtomatik ravishda <strong>Bemorlar WebApp'i</strong> va <strong>Telegram Botida</strong> aks etadi.
+          </span>
+        </div>
+      </div>
+
       {/* Xizmatlar ro'yxati jadvali */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">

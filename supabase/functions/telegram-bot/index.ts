@@ -17,23 +17,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Stomatologiya xizmatlari
+// Stomatologiya xizmatlari
 const SERVICES_LIST = [
-  { id: "srv_1", name: "Birlamchi ko'rik va konsultatsiya", price: 50000 },
-  { id: "srv_2", name: "Svetovoy plomba (Germaniya)", price: 280000 },
-  { id: "srv_3", name: "Professional tozalash (Air Flow)", price: 350000 },
-  { id: "srv_4", name: "Kanal davolash (Pulpit)", price: 220000 },
-  { id: "srv_5", name: "Og'riqsiz tish sug'urish", price: 200000 },
-  { id: "srv_6", name: "Breket o'rnatish", price: 3500000 },
-  { id: "srv_7", name: "Dental Implant (Osstem)", price: 3200000 },
-  { id: "srv_8", name: "Bolalar tishini plombalash", price: 150000 }
+  { id: "srv_1", name: "Breket o'rnatish", price: 3500000 },
+  { id: "srv_2", name: "Svetovoy plomba", price: 280000 },
+  { id: "srv_3", name: "Tish qo'ydirish (Implant)", price: 3200000 },
+  { id: "srv_4", name: "Tish oldirish (Sug'urish)", price: 200000 },
+  { id: "srv_5", name: "Tish tozalash (Air Flow)", price: 300000 },
+  { id: "srv_6", name: "Ko'rik va maslahat", price: 50000 }
 ];
 
 const DOCTORS_LIST = [
-  { id: "doc_1", name: "Dr. Rustam Xoliqov", specialty: "Jarroh-Implantolog" },
-  { id: "doc_2", name: "Dr. Nilufar Karimova", specialty: "Terapevt-Restavrator" },
-  { id: "doc_3", name: "Dr. Jasur Bekmurodov", specialty: "Ortodont (Breketlar)" },
-  { id: "doc_4", name: "Dr. Madina Usmonova", specialty: "Bolalar stomatologi" },
-  { id: "doc_any", name: "Ixtiyoriy bo'sh shifokor", specialty: "Tezroq qabul" }
+  { id: "doc_1", name: "Dr. Ismailov Mansurbek", specialty: "Bosh shifokor, Ortodont", phone: "+998 97 422 99 92" },
+  { id: "doc_2", name: "Dr. Ismailov Muhammad", specialty: "Stomatolog-Terapevt", phone: "+998 33 121 21 31" }
 ];
 
 const TIME_SLOTS = ["09:30", "10:30", "11:30", "14:30", "15:30", "16:30", "17:30"];
@@ -41,22 +37,17 @@ const TIME_SLOTS = ["09:30", "10:30", "11:30", "14:30", "15:30", "16:30", "17:30
 const CLINIC_ID = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d";
 
 const SERVICE_UUID_MAP: Record<string, string> = {
-  srv_1: "c1111111-1111-1111-1111-111111111111",
+  srv_1: "c6666666-6666-6666-6666-666666666666",
   srv_2: "c2222222-2222-2222-2222-222222222222",
-  srv_3: "c3333333-3333-3333-3333-333333333333",
-  srv_4: "c4444444-4444-4444-4444-444444444444",
-  srv_5: "c5555555-5555-5555-5555-555555555555",
-  srv_6: "c6666666-6666-6666-6666-666666666666",
-  srv_7: "c7777777-7777-7777-7777-777777777777",
-  srv_8: "c8888888-8888-8888-8888-888888888888"
+  srv_3: "c7777777-7777-7777-7777-777777777777",
+  srv_4: "c5555555-5555-5555-5555-555555555555",
+  srv_5: "c3333333-3333-3333-3333-333333333333",
+  srv_6: "c1111111-1111-1111-1111-111111111111"
 };
 
 const DOCTOR_UUID_MAP: Record<string, string> = {
   doc_1: "d1111111-1111-1111-1111-111111111111",
-  doc_2: "d2222222-2222-2222-2222-222222222222",
-  doc_3: "d3333333-3333-3333-3333-333333333333",
-  doc_4: "d4444444-4444-4444-4444-444444444444",
-  doc_any: "d1111111-1111-1111-1111-111111111111"
+  doc_2: "d2222222-2222-2222-2222-222222222222"
 };
 
 function calculateEndTime(startTime: string, durationMinutes: number = 30): string {
@@ -102,8 +93,10 @@ async function sendWelcome(chatId: number, firstName: string = "Hurmatli mijoz")
   }).catch(() => {});
 
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-    `🦷 <b>DentaCare Zamonaviy Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
-    `Bizning klinikamizda og'riqsiz davolash, zamonaviy implantatsiya, breketlar va estetik restavratsiya xizmatlari mavjud.\n\n` +
+    `🦷 <b>ORTHODONT-M Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
+    `Bizning shifokorlarimiz:\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Mansurbek</b> (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Muhammad</b> (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
     `👇 <b>Qabulga yozilish uchun WebApp yoki botdan foydalaning:</b>`;
 
   const replyMarkup = {
@@ -463,13 +456,13 @@ async function sendMyBookings(chatId: number) {
 
 // 9. Klinika ma'lumotlari
 async function sendClinicInfo(chatId: number) {
-  const text = `🏥 <b>DentaCare Zamonaviy Stomatologiya Markazi</b>\n\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani, Amir Temur ko'chasi 45-uy\n` +
-    `🚇 <b>Mo'ljal:</b> Minor metro bekati yonida\n` +
-    `⏰ <b>Ish vaqti:</b> 09:00 - 20:00 (Dushanba — Shanba)\n` +
-    `📞 <b>Qabulxona:</b> +998 71 200 44 22\n` +
-    `🚨 <b>Tezkor aloqa:</b> +998 90 123 45 67\n\n` +
-    `✨ <i>Bizning afzalliklarimiz: 100% steril avtoklav tozaligi, Germaniya materiallari va og'riqsiz anesteziya.</i>`;
+  const text = `🏥 <b>ORTHODONT-M Zamonaviy Stomatologiya Markazi</b>\n\n` +
+    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani\n` +
+    `🚇 <b>Mo'ljal:</b> Minor metro bekati yaqinida\n` +
+    `⏰ <b>Ish vaqti:</b> 09:00 - 19:00 (Dushanba — Shanba)\n\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Mansurbek:</b> +998 97 422 99 92\n` +
+    `👨‍⚕️ <b>Dr. Ismailov Muhammad:</b> +998 33 121 21 31\n\n` +
+    `✨ <i>Bizning afzalliklarimiz: Yuqori sifatli breketlar, 100% steril tozalik va og'riqsiz muolajalar.</i>`;
 
   const inline_keyboard = [
     [{ text: "🦷 WebApp orqali navbat olish", web_app: { url: WEBAPP_URL } }]

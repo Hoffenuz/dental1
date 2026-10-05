@@ -305,11 +305,11 @@ export const updateToothRecord = async (patientId, toothNumber, toothData) => {
   return allRecords[patientId];
 };
 
-// 4. Doctors API
+// 4. Doctors API (Faqat 2 ta faol shifokor)
 export const getDoctors = async () => {
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('doctors').select('*');
+      const { data, error } = await supabase.from('doctors').select('*').eq('is_active', true).order('created_at', { ascending: true });
       if (!error && Array.isArray(data) && data.length > 0) {
         return data.map(d => ({
           ...d,
@@ -334,11 +334,11 @@ export const saveDoctor = (doctorData) => {
   return updated;
 };
 
-// 5. Services API
+// 5. Services API (Admin narx belgilashi to'g'ridan-to'g'ri Supabase'ga yoziladi)
 export const getServices = async () => {
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('services').select('*');
+      const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('price_uzs', { ascending: false });
       if (!error && Array.isArray(data) && data.length > 0) {
         return data.map(s => ({
           ...s,
@@ -351,11 +351,39 @@ export const getServices = async () => {
   return loadStorage(STORAGE_KEYS.SERVICES, INITIAL_SERVICES);
 };
 
-export const saveService = (serviceData) => {
+export const saveService = async (serviceData) => {
+  if (supabase) {
+    try {
+      if (serviceData.id && !String(serviceData.id).startsWith('s-')) {
+        await supabase.from('services').update({
+          name: serviceData.name,
+          category: serviceData.category || 'Davolash',
+          description: serviceData.description || '',
+          price_uzs: Number(serviceData.price_uzs) || 0,
+          duration_minutes: Number(serviceData.duration_minutes) || 30,
+          is_active: serviceData.is_active !== false
+        }).eq('id', serviceData.id);
+      } else {
+        const { data } = await supabase.from('services').insert([{
+          clinic_id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+          name: serviceData.name,
+          category: serviceData.category || 'Davolash',
+          description: serviceData.description || '',
+          price_uzs: Number(serviceData.price_uzs) || 0,
+          duration_minutes: Number(serviceData.duration_minutes) || 30,
+          is_active: true
+        }]).select().single();
+        if (data) serviceData.id = data.id;
+      }
+    } catch (e) {
+      console.warn('Supabase xizmatni saqlashda xatolik:', e);
+    }
+  }
+
   const current = loadStorage(STORAGE_KEYS.SERVICES, INITIAL_SERVICES);
   let updated;
   if (serviceData.id) {
-    updated = current.map(s => s.id === serviceData.id ? serviceData : s);
+    updated = current.map(s => s.id === serviceData.id ? { ...s, ...serviceData } : s);
   } else {
     updated = [...current, { ...serviceData, id: 's-' + Math.random().toString(36).substring(2, 9) }];
   }

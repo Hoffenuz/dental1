@@ -228,68 +228,44 @@ CREATE POLICY "Bildirishnomalar ommaviy" ON notifications FOR ALL USING (true) W
 INSERT INTO clinics (id, name, phone, email, address, city, working_hours, telegram_bot_username, currency)
 VALUES (
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    'DentaCare Zamonaviy Stomatologiya Markazi',
-    '+998 71 200 44 22',
-    'info@dentacare.uz',
-    'Toshkent sh., Yunusobod tumani, Amir Temur ko''chasi, 45-uy (Mo''ljal: Minor metro)',
+    'ORTHODONT-M',
+    '+998 97 422 99 92',
+    'info@orthodont-m.uz',
+    'Toshkent sh., Yunusobod tumani (Mo''ljal: Minor metro)',
     'Toshkent',
-    '09:00 - 20:00 (Dushanba - Shanba)',
+    '09:00 - 19:00 (Dushanba - Shanba)',
     'dentalclinicuzbot',
     'UZS'
 ) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, telegram_bot_username = EXCLUDED.telegram_bot_username;
 
--- 2. Shifokorlar
+-- 2. Shifokorlar (Faqat 2 ta mutaxassis)
 INSERT INTO doctors (id, clinic_id, full_name, specialty, experience_years, room_number, phone, photo_url, bio, rating)
 VALUES 
 (
     'd1111111-1111-1111-1111-111111111111',
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    'Dr. Rustam Xoliqov',
-    'Bosh shifokor, Jarroh-Implantolog',
-    14,
-    'Xona 1',
-    '+998 90 123 45 67',
+    'Dr. Ismailov Mansurbek',
+    'Bosh shifokor, Ortodont',
+    12,
+    '1-xona',
+    '+998 97 422 99 92',
     'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
-    'Germaniya va Shveytsariya sertifikatlariga ega yuqori toifali jarroh-implantolog. 4000+ muvaffaqiyatli implantlar muallifi.',
-    4.9
+    'Bosh shifokor, malakali ortodont. Barcha turdagi breketlar va tish qatorini to''g''rilash bo''yicha yetakchi mutaxassis.',
+    5.0
 ),
 (
     'd2222222-2222-2222-2222-222222222222',
     'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    'Dr. Nilufar Karimova',
-    'Terapevt-Restavrator',
-    9,
-    'Xona 2',
-    '+998 93 987 65 43',
-    'https://images.unsplash.com/photo-1594824813576-919c0840b991?w=400&auto=format&fit=crop&q=80',
-    'Estetik tish restavratsiyasi va mikroskop ostida ildiz kanallarini davolash bo''yicha yetakchi mutaxassis.',
-    5.0
-),
-(
-    'd3333333-3333-3333-3333-333333333333',
-    'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    'Dr. Jasur Bekmurodov',
-    'Ortodont (Breket va Eylaynerlar)',
+    'Dr. Ismailov Muhammad',
+    'Stomatolog-Terapevt',
     8,
-    'Xona 3',
-    '+998 97 555 12 34',
+    '2-xona',
+    '+998 33 121 21 31',
     'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
-    'Tish qatorini to''g''rilash, zamonaviy metall va sapfir breketlar o''rnatish bo''yicha mutaxassis.',
-    4.8
-),
-(
-    'd4444444-4444-4444-4444-444444444444',
-    'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-    'Dr. Madina Usmonova',
-    'Bolalar stomatologi',
-    6,
-    'Xona 4',
-    '+998 91 333 44 55',
-    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
-    'Kichkintoylar bilan ishlash psixologiyasi, og''riqsiz bolalar tish davolash mutaxassisi.',
-    4.95
+    'Estetik tish davolash, nurlanuvchi svetovoy plomba, tish toshlarini tozalash va og''riqsiz muolajalar ustasi.',
+    4.9
 )
-ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, specialty = EXCLUDED.specialty;
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, specialty = EXCLUDED.specialty, phone = EXCLUDED.phone;
 
 -- 3. Xizmatlar
 INSERT INTO services (id, clinic_id, category, name, description, price_uzs, duration_minutes, icon)

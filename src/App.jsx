@@ -4,7 +4,6 @@ import Header from './components/Header';
 import DashboardOverview from './pages/DashboardOverview';
 import LiveQueue from './pages/LiveQueue';
 import PatientsCRM from './pages/PatientsCRM';
-import DoctorsSchedule from './pages/DoctorsSchedule';
 import ServicesManager from './pages/ServicesManager';
 import SettingsPage from './pages/SettingsPage';
 import NewBookingModal from './components/NewBookingModal';
@@ -16,9 +15,8 @@ import {
   getPatients, 
   savePatient,
   getDoctors, 
-  saveDoctor,
   getServices, 
-  saveService,
+  saveService, 
   getClinicInfo, 
   saveClinicInfo,
   getDentalRecords,
@@ -29,15 +27,14 @@ import {
   INITIAL_DOCTORS, 
   INITIAL_SERVICES, 
   INITIAL_PATIENTS, 
-  INITIAL_APPOINTMENTS,
+  INITIAL_APPOINTMENTS, 
   INITIAL_DENTAL_RECORDS 
 } from './data/mockAdminData';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
-  const [loading, setLoading] = useState(false);
 
-  // States - oq ekran bo'lmasligi uchun dastlabki ma'lumotlar bilan ochiladi
+  // States - boshlang'ich ma'lumotlar bilan tezkor ochiladi
   const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
   const [patients, setPatients] = useState(INITIAL_PATIENTS);
   const [doctors, setDoctors] = useState(INITIAL_DOCTORS);
@@ -45,10 +42,10 @@ export default function App() {
   const [clinic, setClinic] = useState(INITIAL_CLINIC);
   const [dentalRecords, setDentalRecords] = useState(INITIAL_DENTAL_RECORDS);
 
-  // Modal states
+  // Modal holati
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
 
-  // Initial data loading in background
+  // Ma'lumotlarni Supabase'dan fonda yuklab olish
   const loadAllData = async () => {
     try {
       const timeoutPromise = new Promise((_, reject) => 
@@ -76,7 +73,7 @@ export default function App() {
         setDentalRecords(dentalData);
       }
     } catch (e) {
-      console.warn('Supabase ma\'lumotlarini fonda yangilashda ogohlantirish:', e.message);
+      console.warn('Supabase ma\'lumotlarini yangilash ogohlantirish:', e.message);
     }
   };
 
@@ -84,7 +81,7 @@ export default function App() {
     loadAllData();
   }, []);
 
-  // Status updates
+  // Navbat holatini yangilash
   const handleUpdateStatus = async (appointmentId, status) => {
     const updated = await updateAppointmentStatus(appointmentId, status);
     setAppointments(updated);
@@ -103,19 +100,19 @@ export default function App() {
     }
   };
 
-  // Manual booking
+  // Yangi navbat qo'shish
   const handleCreateBooking = async (bookingData) => {
     const newBooking = await createManualAppointment(bookingData);
     setAppointments(prev => [newBooking, ...prev]);
   };
 
-  // Patient management
+  // Bemorni saqlash
   const handleSavePatient = async (patientData) => {
     const updated = await savePatient(patientData);
     setPatients(updated);
   };
 
-  // Tooth update
+  // Tish kartasini yangilash
   const handleUpdateTooth = (patientId, toothNumber, toothData) => {
     const updatedRecords = updateToothRecord(patientId, toothNumber, toothData);
     setDentalRecords(prev => ({
@@ -124,19 +121,13 @@ export default function App() {
     }));
   };
 
-  // Doctor management
-  const handleSaveDoctor = (doctorData) => {
-    const updated = saveDoctor(doctorData);
-    setDoctors(updated);
-  };
-
-  // Service management
-  const handleSaveService = (serviceData) => {
-    const updated = saveService(serviceData);
+  // Xizmat va narxni saqlash (User WebApp va botda ko'rinadi)
+  const handleSaveService = async (serviceData) => {
+    const updated = await saveService(serviceData);
     setServices(updated);
   };
 
-  // Clinic info
+  // Klinika ma'lumotlarini saqlash
   const handleSaveClinic = (info) => {
     const updated = saveClinicInfo(info);
     setClinic(updated);
@@ -148,7 +139,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      {/* Sidebar */}
+      {/* Sidebar - Soddalashtirilgan (2 ta shifokor bilan) */}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
@@ -158,7 +149,7 @@ export default function App() {
         }}
       />
 
-      {/* Main Content Area */}
+      {/* Asosiy ish maydoni */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           clinic={clinic}
@@ -167,60 +158,53 @@ export default function App() {
 
         <main className="flex-1 p-6 overflow-y-auto">
           {currentTab === 'dashboard' && (
-                <DashboardOverview
-                  appointments={appointments}
-                  patients={patients}
-                  doctors={doctors}
-                  services={services}
-                  onNavigateToQueue={() => setCurrentTab('queue')}
-                  onUpdateStatus={handleUpdateStatus}
-                />
-              )}
+            <DashboardOverview
+              appointments={appointments}
+              patients={patients}
+              doctors={doctors}
+              services={services}
+              onNavigateToQueue={() => setCurrentTab('queue')}
+              onUpdateStatus={handleUpdateStatus}
+            />
+          )}
 
-              {currentTab === 'queue' && (
-                <LiveQueue
-                  appointments={appointments}
-                  doctors={doctors}
-                  services={services}
-                  onUpdateStatus={handleUpdateStatus}
-                  onOpenNewBooking={() => setIsNewBookingOpen(true)}
-                />
-              )}
+          {currentTab === 'queue' && (
+            <LiveQueue
+              appointments={appointments}
+              doctors={doctors}
+              services={services}
+              onUpdateStatus={handleUpdateStatus}
+              onOpenNewBooking={() => setIsNewBookingOpen(true)}
+            />
+          )}
 
-              {currentTab === 'patients' && (
-                <PatientsCRM
-                  patients={patients}
-                  appointments={appointments}
-                  dentalRecords={dentalRecords}
-                  onSavePatient={handleSavePatient}
-                  onUpdateTooth={handleUpdateTooth}
-                />
-              )}
+          {currentTab === 'patients' && (
+            <PatientsCRM
+              patients={patients}
+              appointments={appointments}
+              dentalRecords={dentalRecords}
+              onSavePatient={handleSavePatient}
+              onUpdateTooth={handleUpdateTooth}
+            />
+          )}
 
-              {currentTab === 'doctors' && (
-                <DoctorsSchedule
-                  doctors={doctors}
-                  onSaveDoctor={handleSaveDoctor}
-                />
-              )}
+          {currentTab === 'services' && (
+            <ServicesManager
+              services={services}
+              onSaveService={handleSaveService}
+            />
+          )}
 
-              {currentTab === 'services' && (
-                <ServicesManager
-                  services={services}
-                  onSaveService={handleSaveService}
-                />
-              )}
-
-              {currentTab === 'settings' && (
-                <SettingsPage
-                  clinic={clinic}
-                  onSaveClinic={handleSaveClinic}
-                />
-              )}
+          {currentTab === 'settings' && (
+            <SettingsPage
+              clinic={clinic}
+              onSaveClinic={handleSaveClinic}
+            />
+          )}
         </main>
       </div>
 
-      {/* Manual Booking Modal */}
+      {/* Tezkor navbat qo'shish modali */}
       <NewBookingModal
         isOpen={isNewBookingOpen}
         onClose={() => setIsNewBookingOpen(false)}
