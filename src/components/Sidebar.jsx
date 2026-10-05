@@ -49,7 +49,7 @@ export default function Sidebar({ currentTab, setCurrentTab, counts }) {
         </div>
         <div>
           <h1 className="font-extrabold text-base text-slate-800 tracking-tight leading-none">
-            ORTHODONT<span className="text-cyan-600 font-bold text-sm">-M</span>
+            ISMAILOV <span className="text-cyan-600 font-bold text-sm">DENTAL</span>
           </h1>
           <p className="text-[11px] text-slate-400 mt-1 font-medium">Stomatologiya Boshqaruvi</p>
         </div>

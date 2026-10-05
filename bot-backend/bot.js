@@ -1,5 +1,7 @@
 // ====================================================================
-// ORTHODONT-M — Rasmiy Telegram Bot Servisi (@dentalclinicuzbot)
+// Ismailov Dental Clinic — Rasmiy Telegram Bot Servisi (@dentalclinicuzbot)
+// Manzil: Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida
+// Lokatsiya: https://maps.app.goo.gl/sbZqccuTv1p9bKdK6
 // Bosh shifokor: Dr. Ismailov Mansurbek (+998 97 422 99 92)
 // Shifokor: Dr. Ismailov Muhammad (+998 33 121 21 31)
 // WebApp: https://dentaluz2.netlify.app
@@ -13,6 +15,7 @@ dotenv.config();
 const BOT_TOKEN = process.env.BOT_TOKEN || '8880891529:AAEnaYtrY-QhGy22S4jyPU0ZaNMdpS-MPW0';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://dentaluz2.netlify.app';
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '1433285502';
+const MAPS_URL = 'https://maps.app.goo.gl/sbZqccuTv1p9bKdK6';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const CLINIC_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
@@ -37,14 +40,16 @@ export const DOCTORS_LIST = [
     name: 'Dr. Ismailov Mansurbek', 
     specialty: 'Ortodont / Bosh shifokor', 
     phone: '+998 97 422 99 92', 
-    room: '1-xona' 
+    room: '1-xona',
+    photo_url: null
   },
   { 
     id: 'd2222222-2222-2222-2222-222222222222', 
     name: 'Dr. Ismailov Muhammad', 
     specialty: 'Stomatolog-Terapevt', 
     phone: '+998 33 121 21 31', 
-    room: '2-xona' 
+    room: '2-xona',
+    photo_url: '/dr-muhammad.png'
   }
 ];
 
@@ -104,10 +109,12 @@ function formatPrice(p) {
 
 // Bot buyruqlari va pastki menyu tugmasini sozlash
 export async function setupBotCommands() {
-  await callTelegramApi('setMyName', { name: 'ORTHODONT-M' });
+  await callTelegramApi('setMyName', { name: 'Ismailov Dental Clinic' });
 
   await callTelegramApi('setMyDescription', { 
-    description: `🦷 ORTHODONT-M Stomatologiya Markazining rasmiy boti.\n\n` +
+    description: `🦷 Ismailov Dental Clinic — Stomatologiya Markazining rasmiy boti.\n\n` +
+      `📍 Manzil: Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida\n` +
+      `🗺 Xaritada: ${MAPS_URL}\n\n` +
       `Bizning shifokorlarimiz:\n` +
       `👨‍⚕️ Dr. Ismailov Mansurbek (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
       `👨‍⚕️ Dr. Ismailov Muhammad (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
@@ -115,7 +122,7 @@ export async function setupBotCommands() {
   });
 
   await callTelegramApi('setMyShortDescription', { 
-    short_description: `ORTHODONT-M Stomatologiya Markaziga navbat olish boti` 
+    short_description: `Ismailov Dental Clinic — Online navbat olish boti` 
   });
 
   await callTelegramApi('setMyCommands', {
@@ -123,7 +130,7 @@ export async function setupBotCommands() {
       { command: 'start', description: 'Botni ishga tushirish va asosiy menyu' },
       { command: 'navbat', description: 'Tezkor qabulga navbat olish' },
       { command: 'buyurtmalarim', description: 'Mening navbatlarim' },
-      { command: 'manzil', description: 'Klinika manzili va aloqa' },
+      { command: 'manzil', description: 'Klinika manzili, lokatsiya va aloqa' },
       { command: 'bekor', description: 'Joriy amalni bekor qilish' }
     ]
   });
@@ -142,11 +149,12 @@ export async function sendWelcomeMessage(chatId, firstName = 'Hurmatli mijoz') {
   userSessions.delete(chatId);
 
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-    `🦷 <b>ORTHODONT-M Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
+    `🦷 <b>Ismailov Dental Clinic</b> stomatologiya markaziga xush kelibsiz.\n\n` +
     `Bizning shifokorlarimiz:\n` +
     `👨‍⚕️ <b>Dr. Ismailov Mansurbek</b> (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
     `👨‍⚕️ <b>Dr. Ismailov Muhammad</b> (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
-    `📍 Manzil: Toshkent sh., Minor metro bekati yaqinida\n\n` +
+    `📍 <b>Manzil:</b> Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida\n` +
+    `🗺 <a href="${MAPS_URL}">Google Xaritada ko'rish (Lokatsiya)</a>\n\n` +
     `👇 <b>Qabulga yozilish uchun qulay usulni tanlang:</b>`;
 
   const replyMarkup = {
@@ -464,7 +472,8 @@ export async function completeBooking(chatId, phone, user) {
     `👤 <b>Bemor:</b> ${bookingData.patient_name}\n` +
     `📞 <b>Aloqa:</b> ${bookingData.patient_phone}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Minor metro bekati yaqinida\n` +
+    `📍 <b>Manzil:</b> Qo'shko'pir tumani, Al-Beruniy ko'chasi (Park oldida)\n` +
+    `🗺 <b>Lokatsiya:</b> ${MAPS_URL}\n` +
     `📞 <b>Klinika telefoni:</b> +998 97 422 99 92 / +998 33 121 21 31\n\n` +
     `<i>Iltimos, qabul vaqtidan 10 daqiqa oldin yetib kelishingizni so'raymiz.</i>`;
 
@@ -500,7 +509,8 @@ export async function sendAppointmentTicket(chatId, booking) {
     `• <b>Sana:</b> 📅 ${booking.appointment_date}\n` +
     `• <b>Vaqt:</b> ⏰ ${booking.start_time}\n` +
     `• <b>Bemor:</b> ${booking.patient_name}\n\n` +
-    `📍 <b>Manzil:</b> ORTHODONT-M (Minor metro bekati yaqinida)\n` +
+    `📍 <b>Manzil:</b> Ismailov Dental Clinic (Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida)\n` +
+    `🗺 <b>Lokatsiya:</b> ${MAPS_URL}\n` +
     `📞 <b>Aloqa:</b> +998 97 422 99 92 / +998 33 121 21 31`;
 
   return await callTelegramApi('sendMessage', {
@@ -539,7 +549,7 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
   } else if (newStatus === 'bekor_qilindi') {
     statusText = '🔴 <b>Sizning navbatingiz bekor qilindi.</b>\n\nBoshqa vaqtni tanlash uchun qayta navbat olishingiz mumkin.';
   } else if (newStatus === 'yakunlandi') {
-    statusText = '✅ <b>Muolajangiz muvaffaqiyatli yakunlandi!</b>\n\nORTHODONT-M klinikasini tanlaganingiz uchun tashakkur!';
+    statusText = '✅ <b>Muolajangiz muvaffaqiyatli yakunlandi!</b>\n\nIsmailov Dental Clinic markazini tanlaganingiz uchun tashakkur!';
   } else {
     statusText = `ℹ️ <b>Navbatingiz holati yangilandi:</b> ${newStatus}`;
   }
@@ -548,7 +558,7 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
     `• <b>Sana:</b> ${booking.appointment_date} (${booking.start_time})\n` +
     `• <b>Shifokor:</b> ${booking.doctor_name || 'Dr. Ismailov Mansurbek'}\n` +
     `• <b>Xizmat:</b> ${booking.service_name || 'Stomatologiya xizmati'}\n` +
-    `📍 <b>ORTHODONT-M</b> (Minor metro yaqinida)`;
+    `📍 <b>Ismailov Dental Clinic</b> (Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida)`;
 
   return await callTelegramApi('sendMessage', {
     chat_id: chatId,
@@ -559,8 +569,9 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
 
 // 4. Klinika ma'lumotlari va Mening navbatlarim
 export async function sendClinicInfo(chatId) {
-  const text = `🏥 <b>ORTHODONT-M Zamonaviy Stomatologiya Markazi</b>\n\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Minor metro bekati yaqinida\n` +
+  const text = `🏥 <b>Ismailov Dental Clinic — Zamonaviy Stomatologiya Markazi</b>\n\n` +
+    `📍 <b>Manzil:</b> Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida\n` +
+    `🗺 <b>Lokatsiya:</b> ${MAPS_URL}\n` +
     `⏰ <b>Ish vaqti:</b> 09:00 - 19:00 (Dushanba — Shanba)\n\n` +
     `👨‍⚕️ <b>Dr. Ismailov Mansurbek (Ortodont / Bosh shifokor):</b>\n` +
     `📞 +998 97 422 99 92\n\n` +
@@ -569,6 +580,7 @@ export async function sendClinicInfo(chatId) {
     `✨ <i>Bizning xizmatlar: Breket o'rnatish, Svetovoy plomba, Implant qo'yish, Tish sug'urish, Air Flow tozalash.</i>`;
 
   const inline_keyboard = [
+    [{ text: '🗺 Xaritada Ko\'rish (Google Maps)', url: MAPS_URL }],
     [{ text: '🦷 Navbat Olish (WebApp)', web_app: { url: WEBAPP_URL } }]
   ];
 

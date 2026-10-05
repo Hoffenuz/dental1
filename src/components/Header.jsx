@@ -18,7 +18,7 @@ export default function Header({ clinic, onOpenNewBooking, todayDate }) {
         </div>
         <span className="text-xs text-slate-400">|</span>
         <span className="text-xs font-semibold text-slate-800">
-          {clinic?.name || 'ORTHODONT-M'}
+          {clinic?.name || 'Ismailov Dental Clinic'}
         </span>
       </div>
 

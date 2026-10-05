@@ -93,10 +93,12 @@ async function sendWelcome(chatId: number, firstName: string = "Hurmatli mijoz")
   }).catch(() => {});
 
   const text = `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-    `🦷 <b>ORTHODONT-M Stomatologiya Markaziga</b> xush kelibsiz.\n\n` +
+    `🦷 <b>Ismailov Dental Clinic</b> stomatologiya markaziga xush kelibsiz.\n\n` +
     `Bizning shifokorlarimiz:\n` +
     `👨‍⚕️ <b>Dr. Ismailov Mansurbek</b> (Ortodont / Bosh shifokor) — 📞 +998 97 422 99 92\n` +
     `👨‍⚕️ <b>Dr. Ismailov Muhammad</b> (Stomatolog-Terapevt) — 📞 +998 33 121 21 31\n\n` +
+    `📍 <b>Manzil:</b> Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida\n` +
+    `🗺 <a href="https://maps.app.goo.gl/sbZqccuTv1p9bKdK6">Google Xaritada ko'rish (Lokatsiya)</a>\n\n` +
     `👇 <b>Qabulga yozilish uchun WebApp yoki botdan foydalaning:</b>`;
 
   const replyMarkup = {
@@ -456,15 +458,16 @@ async function sendMyBookings(chatId: number) {
 
 // 9. Klinika ma'lumotlari
 async function sendClinicInfo(chatId: number) {
-  const text = `🏥 <b>ORTHODONT-M Zamonaviy Stomatologiya Markazi</b>\n\n` +
-    `📍 <b>Manzil:</b> Toshkent sh., Yunusobod tumani\n` +
-    `🚇 <b>Mo'ljal:</b> Minor metro bekati yaqinida\n` +
+  const text = `🏥 <b>Ismailov Dental Clinic — Zamonaviy Stomatologiya Markazi</b>\n\n` +
+    `📍 <b>Manzil:</b> Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida\n` +
+    `🗺 <b>Lokatsiya:</b> https://maps.app.goo.gl/sbZqccuTv1p9bKdK6\n` +
     `⏰ <b>Ish vaqti:</b> 09:00 - 19:00 (Dushanba — Shanba)\n\n` +
     `👨‍⚕️ <b>Dr. Ismailov Mansurbek:</b> +998 97 422 99 92\n` +
     `👨‍⚕️ <b>Dr. Ismailov Muhammad:</b> +998 33 121 21 31\n\n` +
-    `✨ <i>Bizning afzalliklarimiz: Yuqori sifatli breketlar, 100% steril tozalik va og'riqsiz muolajalar.</i>`;
+    `✨ <i>Bizning xizmatlar: Breket o'rnatish, Svetovoy plomba, Implant, Tish sug'urish, Tish tozalash.</i>`;
 
   const inline_keyboard = [
+    [{ text: "🗺 Xaritada Ko'rish (Google Maps)", url: "https://maps.app.goo.gl/sbZqccuTv1p9bKdK6" }],
     [{ text: "🦷 WebApp orqali navbat olish", web_app: { url: WEBAPP_URL } }]
   ];
 
@@ -523,7 +526,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ 
       status: "ok", 
-      service: "ORTHODONT-M Supabase Edge Function 24/7 Telegram Bot",
+      service: "Ismailov Dental Clinic Supabase Edge Function 24/7 Telegram Bot",
       bot: "@dentalclinicuzbot",
       timestamp: new Date().toISOString()
     }), {
@@ -540,7 +543,7 @@ serve(async (req: Request) => {
       if (b?.patient_telegram_id) {
         await callTelegram("sendMessage", {
           chat_id: b.patient_telegram_id,
-          text: `✅ <b>Sizning navbatingiz qabul qilindi!</b>\n\n• <b>Xizmat:</b> ${b.service_name}\n• <b>Shifokor:</b> ${b.doctor_name}\n• <b>Sana:</b> ${b.appointment_date} (${b.start_time})\n📍 ORTHODONT-M (Minor metro yaqinida)`,
+          text: `✅ <b>Sizning navbatingiz qabul qilindi!</b>\n\n• <b>Xizmat:</b> ${b.service_name}\n• <b>Shifokor:</b> ${b.doctor_name}\n• <b>Sana:</b> ${b.appointment_date} (${b.start_time})\n📍 Ismailov Dental Clinic (Qo'shko'pir tumani, Al-Beruniy ko'chasi, park oldida)`,
           parse_mode: "HTML"
         });
       }
