@@ -55,8 +55,18 @@ export const DOCTORS_LIST = [
 
 export const TIME_SLOTS = ['09:30', '10:30', '11:30', '14:30', '15:30', '16:30', '17:30'];
 
-// Dinamik xizmatlar va narxlarni Supabase bazasidan olish
-export async function getServices() {
+// Tezkor xotira keshi (Performance va qotishlarni oldini olish uchun)
+let cachedServices = null;
+let lastServicesFetch = 0;
+const SERVICES_CACHE_TTL = 60 * 1000; // 60 soniya kesh
+
+// Dinamik xizmatlar va narxlarni olish (Kesh orqali tezkor 0ms qaytadi)
+export async function getServices(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedServices && (now - lastServicesFetch < SERVICES_CACHE_TTL)) {
+    return cachedServices;
+  }
+
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -65,39 +75,52 @@ export async function getServices() {
         .eq('is_active', true)
         .order('price', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return data.map(s => ({
+      if (!error && Array.isArray(data) && data.length > 0) {
+        cachedServices = data.map(s => ({
           id: s.id,
           name: s.name,
           price: Number(s.price),
           duration: s.duration_minutes || 30
         }));
+        lastServicesFetch = now;
+        return cachedServices;
       }
     } catch (err) {
       console.warn('Supabase xizmatlarini yuklashda xato:', err.message);
     }
   }
-  return DEFAULT_SERVICES;
+
+  if (!cachedServices) {
+    cachedServices = DEFAULT_SERVICES;
+    lastServicesFetch = now;
+  }
+  return cachedServices;
 }
 
-// Telegram API ga so'rov yuborish
+// Telegram API ga tezkor va barqaror so'rov yuborish
 export async function callTelegramApi(method, payload) {
   if (!BOT_TOKEN) return { ok: false, error: "Bot token kiritilmagan" };
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       const res = await fetch(`${TELEGRAM_API}/${method}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
       return await res.json();
     } catch (error) {
-      if (attempt === 3) {
+      if (attempt === 2) {
         console.error(`Telegram API xatosi (${method}):`, error.message);
         return { ok: false, error: error.message };
       }
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 300));
     }
   }
 }
@@ -625,118 +648,137 @@ export async function startBotPolling() {
   console.log(`🤖 Telegram Bot (@dentalclinicuzbot) polling boshlandi...`);
   await setupBotCommands();
 
-  const poll = async () => {
+  // Bitta yangilanishni (update) tezkor va parallel qayta ishlash
+  const handleSingleUpdate = async (update) => {
     try {
-      const response = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=20`);
+      // 1. Matnli xabarlar va Kontaktlar
+      if (update.message) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text?.trim() || '';
+        const user = update.message.from;
+
+        // Kontakt yuborilganda
+        if (update.message.contact) {
+          const phone = update.message.contact.phone_number;
+          await completeBooking(chatId, phone, user);
+          return;
+        }
+
+        // Bekor qilish
+        if (text === '/bekor' || text === '❌ Bekor qilish') {
+          userSessions.delete(chatId);
+          await sendWelcomeMessage(chatId, user?.first_name);
+          return;
+        }
+
+        // Telefon kiritish kutilayotgan holat
+        const session = userSessions.get(chatId);
+        if (session && session.step === 'awaiting_contact') {
+          if (text.length >= 7) {
+            await completeBooking(chatId, text, user);
+            return;
+          }
+        }
+
+        // Buyruqlar
+        if (text.startsWith('/start')) {
+          await sendWelcomeMessage(chatId, user?.first_name);
+        } else if (text === '/navbat' || text === '⚡ Tezkor Navbat Olish') {
+          await promptServiceSelection(chatId);
+        } else if (text === '/buyurtmalarim' || text === '📋 Mening Navbatlarim') {
+          await sendMyBookings(chatId);
+        } else if (text === '/manzil' || text === '📍 Manzil va Aloqa') {
+          await sendClinicInfo(chatId);
+        } else {
+          await sendWelcomeMessage(chatId, user?.first_name);
+        }
+        return;
+      }
+
+      // 2. Inline tugmalar (Callback Queries)
+      if (update.callback_query) {
+        const query = update.callback_query;
+        const chatId = query.message.chat.id;
+        const messageId = query.message.message_id;
+        const data = query.data;
+
+        // Tugmadagi yuklanish indikatorini DARHOL to'xtatish (Instant feedback)
+        callTelegramApi('answerCallbackQuery', { callback_query_id: query.id }).catch(() => {});
+
+        if (data === 'start_bot_booking') {
+          await promptServiceSelection(chatId, messageId);
+        } else if (data.startsWith('service_')) {
+          const serviceId = data.replace('service_', '');
+          const services = await getServices();
+          const srv = services.find(s => s.id === serviceId) || services[0];
+          const session = userSessions.get(chatId) || {};
+          session.service = srv;
+          userSessions.set(chatId, session);
+          await promptDoctorSelection(chatId, messageId);
+        } else if (data === 'back_to_services') {
+          await promptServiceSelection(chatId, messageId);
+        } else if (data.startsWith('doctor_')) {
+          const docId = data.replace('doctor_', '');
+          const doc = DOCTORS_LIST.find(d => d.id === docId) || DOCTORS_LIST[0];
+          const session = userSessions.get(chatId) || {};
+          session.doctor = doc;
+          userSessions.set(chatId, session);
+          await promptDateSelection(chatId, messageId);
+        } else if (data === 'back_to_doctors') {
+          await promptDoctorSelection(chatId, messageId);
+        } else if (data.startsWith('date_')) {
+          const dateStr = data.replace('date_', '');
+          const session = userSessions.get(chatId) || {};
+          session.date = dateStr;
+          userSessions.set(chatId, session);
+          await promptTimeSelection(chatId, messageId);
+        } else if (data === 'back_to_dates') {
+          await promptDateSelection(chatId, messageId);
+        } else if (data.startsWith('time_')) {
+          const timeStr = data.replace('time_', '');
+          const session = userSessions.get(chatId) || {};
+          session.time = timeStr;
+          userSessions.set(chatId, session);
+          await promptContactInput(chatId);
+        } else if (data === 'view_my_bookings') {
+          await sendMyBookings(chatId);
+        } else if (data === 'view_clinic_info') {
+          await sendClinicInfo(chatId);
+        } else if (data === 'cancel_booking') {
+          userSessions.delete(chatId);
+          await sendWelcomeMessage(chatId, query.from?.first_name);
+        }
+      }
+    } catch (err) {
+      console.warn('Update ishlovida xato:', err.message);
+    }
+  };
+
+  // Oldindan xizmatlar keshini qizdirib qo'yish (Cold start bo'lmasligi uchun)
+  getServices().catch(() => {});
+
+  const poll = async () => {
+    let nextDelay = 0;
+    try {
+      const response = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=15`);
       const data = await response.json();
 
-      if (data.ok && data.result && data.result.length > 0) {
+      if (data.ok && Array.isArray(data.result) && data.result.length > 0) {
         for (const update of data.result) {
-          lastUpdateId = update.update_id;
-
-          // 1. Matnli xabarlar va Kontaktlar
-          if (update.message) {
-            const chatId = update.message.chat.id;
-            const text = update.message.text?.trim() || '';
-            const user = update.message.from;
-
-            // Kontakt yuborilganda
-            if (update.message.contact) {
-              const phone = update.message.contact.phone_number;
-              await completeBooking(chatId, phone, user);
-              continue;
-            }
-
-            // Bekor qilish
-            if (text === '/bekor' || text === '❌ Bekor qilish') {
-              userSessions.delete(chatId);
-              await sendWelcomeMessage(chatId, user?.first_name);
-              continue;
-            }
-
-            // Telefon kiritish kutilayotgan holat
-            const session = userSessions.get(chatId);
-            if (session && session.step === 'awaiting_contact') {
-              if (text.length >= 7) {
-                await completeBooking(chatId, text, user);
-                continue;
-              }
-            }
-
-            // Buyruqlar
-            if (text.startsWith('/start')) {
-              await sendWelcomeMessage(chatId, user?.first_name);
-            } else if (text === '/navbat' || text === '⚡ Tezkor Navbat Olish') {
-              await promptServiceSelection(chatId);
-            } else if (text === '/buyurtmalarim' || text === '📋 Mening Navbatlarim') {
-              await sendMyBookings(chatId);
-            } else if (text === '/manzil' || text === '📍 Manzil va Aloqa') {
-              await sendClinicInfo(chatId);
-            } else {
-              await sendWelcomeMessage(chatId, user?.first_name);
-            }
-          }
-
-          // 2. Inline tugmalar (Callback Queries)
-          if (update.callback_query) {
-            const query = update.callback_query;
-            const chatId = query.message.chat.id;
-            const messageId = query.message.message_id;
-            const data = query.data;
-
-            // Telegram ga yuklanish indikatorini to'xtatish haqida javob
-            callTelegramApi('answerCallbackQuery', { callback_query_id: query.id }).catch(() => {});
-
-            if (data === 'start_bot_booking') {
-              await promptServiceSelection(chatId, messageId);
-            } else if (data.startsWith('service_')) {
-              const serviceId = data.replace('service_', '');
-              const services = await getServices();
-              const srv = services.find(s => s.id === serviceId) || services[0];
-              const session = userSessions.get(chatId) || {};
-              session.service = srv;
-              userSessions.set(chatId, session);
-              await promptDoctorSelection(chatId, messageId);
-            } else if (data === 'back_to_services') {
-              await promptServiceSelection(chatId, messageId);
-            } else if (data.startsWith('doctor_')) {
-              const docId = data.replace('doctor_', '');
-              const doc = DOCTORS_LIST.find(d => d.id === docId) || DOCTORS_LIST[0];
-              const session = userSessions.get(chatId) || {};
-              session.doctor = doc;
-              userSessions.set(chatId, session);
-              await promptDateSelection(chatId, messageId);
-            } else if (data === 'back_to_doctors') {
-              await promptDoctorSelection(chatId, messageId);
-            } else if (data.startsWith('date_')) {
-              const dateStr = data.replace('date_', '');
-              const session = userSessions.get(chatId) || {};
-              session.date = dateStr;
-              userSessions.set(chatId, session);
-              await promptTimeSelection(chatId, messageId);
-            } else if (data === 'back_to_dates') {
-              await promptDateSelection(chatId, messageId);
-            } else if (data.startsWith('time_')) {
-              const timeStr = data.replace('time_', '');
-              const session = userSessions.get(chatId) || {};
-              session.time = timeStr;
-              userSessions.set(chatId, session);
-              await promptContactInput(chatId);
-            } else if (data === 'view_my_bookings') {
-              await sendMyBookings(chatId);
-            } else if (data === 'view_clinic_info') {
-              await sendClinicInfo(chatId);
-            } else if (data === 'cancel_booking') {
-              userSessions.delete(chatId);
-              await sendWelcomeMessage(chatId, query.from?.first_name);
-            }
-          }
+          lastUpdateId = Math.max(lastUpdateId, update.update_id);
+          // Har bir xabarga parallel ishlov berish (navbatda kutmaslik uchun)
+          handleSingleUpdate(update);
         }
       }
     } catch (e) {
-      // Tarmoq uzilishlarida jim turish
+      nextDelay = 2000;
     }
-    setTimeout(poll, 1000);
+
+    if (nextDelay > 0) {
+      setTimeout(poll, nextDelay);
+    } else {
+      setImmediate(poll);
+    }
   };
 
   poll();
