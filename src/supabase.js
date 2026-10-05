@@ -8,17 +8,34 @@ import {
   INITIAL_DENTAL_RECORDS
 } from './data/mockAdminData';
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jvzghreavlzjpxhnasxd.supabase.co';
-const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDI2OTcsImV4cCI6MjEwMDg3ODY5N30.bRCRxNOR32VEcI8Pd-0OpSvtfESC1UyTpeJ1TItA0Y4';
+const defaultUrl = 'https://jvzghreavlzjpxhnasxd.supabase.co';
+const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDI2OTcsImV4cCI6MjEwMDg3ODY5N30.bRCRxNOR32VEcI8Pd-0OpSvtfESC1UyTpeJ1TItA0Y4';
+
+const cleanString = (val, fallback = '') => {
+  if (!val) return fallback;
+  const str = String(val).trim().replace(/^["']|["']$/g, '');
+  if (!str || str === 'undefined' || str === 'null' || str.includes('placeholder')) {
+    return fallback;
+  }
+  return str;
+};
+
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || defaultUrl;
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || defaultKey;
 
 // Har qanday qo'shimcha qo'shtirnoq, probel yoki xato formatlarni tozalash
-const cleanUrl = String(rawUrl).trim().replace(/^["']|["']$/g, '');
-const cleanKey = String(rawKey).trim().replace(/^["']|["']$/g, '');
+const cleanUrl = cleanString(rawUrl, defaultUrl).replace(/\/+$/, '');
+const cleanKey = cleanString(rawKey, defaultKey);
 
 let client = null;
-if (cleanUrl && cleanKey && !cleanUrl.includes('placeholder')) {
+if (cleanUrl && cleanKey && cleanUrl.startsWith('http')) {
   try {
-    client = createClient(cleanUrl, cleanKey);
+    client = createClient(cleanUrl, cleanKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
   } catch (err) {
     console.warn('Supabase createClient xatolik berdi, mock rejimda ishlanadi:', err);
     client = null;
