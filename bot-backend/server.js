@@ -21,7 +21,7 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    service: 'ORTHODONT-M Telegram Bot & Notification Backend',
+    service: 'Ismailov Dental Clinic Telegram Bot & Notification Backend',
     timestamp: new Date().toISOString()
   });
 });
