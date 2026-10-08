@@ -419,13 +419,13 @@ async function promptTimeSelection(chatId: number, serviceId: string, docId: str
 
 // 6. 5-bosqich: Telefon raqam so'rash
 async function promptContactInput(chatId: number, serviceId: string, docId: string, dateStr: string, timeStr: string) {
-  // Vaqtincha holatni database da saqlaymiz yoki statega yozamiz
-  await supabase.from("notifications").insert([{
-    recipient_telegram_id: chatId,
-    recipient_type: "patient",
-    message: JSON.stringify({ step: "contact", serviceId, docId, dateStr, timeStr }),
-    status: "kutilmoqda"
-  }]);
+  // Bot sessiyasi klinikaning boshqa ilovalari ishlatadigan notifications
+  // jadvalidan alohida saqlanadi.
+  await supabase.from("telegram_booking_sessions").upsert({
+    chat_id: chatId,
+    session: { step: "contact", serviceId, docId, dateStr, timeStr },
+    updated_at: new Date().toISOString()
+  });
 
   const text = `📱 <b>Yakuniy qadam: Telefon raqamingizni tasdiqlang.</b>\n\n` +
     `Shifokor siz bilan bog'lanishi uchun quyidagi <b>"📱 Raqamimni ulashish"</b> tugmasini bosing yoki raqamingizni yozib yuboring (masalan: +998901234567):`;
@@ -750,19 +750,16 @@ serve(async (req: Request) => {
         const phone = update.message.contact.phone_number;
         // Oxirgi kutilayotgan sessiyani olish
         const { data } = await supabase
-          .from("notifications")
-          .select("message")
-          .eq("recipient_telegram_id", chatId)
-          .eq("status", "kutilmoqda")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+          .from("telegram_booking_sessions")
+          .select("session")
+          .eq("chat_id", chatId)
+          .maybeSingle();
 
-        if (data?.message) {
+        if (data?.session) {
           try {
-            const sessionData = JSON.parse(data.message);
+            const sessionData = data.session;
             await finalizeBooking(chatId, phone, sessionData, user);
-            await supabase.from("notifications").update({ status: "yuborildi" }).eq("recipient_telegram_id", chatId);
+            await supabase.from("telegram_booking_sessions").delete().eq("chat_id", chatId);
             return new Response("ok");
           } catch (_) {}
         }
@@ -771,19 +768,16 @@ serve(async (req: Request) => {
       // Agar matn shaklida telefon yozilgan bo'lsa
       if (/^\+?[0-9]{9,13}$/.test(text.replace(/[\s-]/g, ""))) {
         const { data } = await supabase
-          .from("notifications")
-          .select("message")
-          .eq("recipient_telegram_id", chatId)
-          .eq("status", "kutilmoqda")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+          .from("telegram_booking_sessions")
+          .select("session")
+          .eq("chat_id", chatId)
+          .maybeSingle();
 
-        if (data?.message) {
+        if (data?.session) {
           try {
-            const sessionData = JSON.parse(data.message);
+            const sessionData = data.session;
             await finalizeBooking(chatId, text, sessionData, user);
-            await supabase.from("notifications").update({ status: "yuborildi" }).eq("recipient_telegram_id", chatId);
+            await supabase.from("telegram_booking_sessions").delete().eq("chat_id", chatId);
             return new Response("ok");
           } catch (_) {}
         }

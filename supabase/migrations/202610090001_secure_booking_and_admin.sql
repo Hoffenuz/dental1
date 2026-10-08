@@ -54,7 +54,6 @@ alter table public.doctor_schedules enable row level security;
 alter table public.patients enable row level security;
 alter table public.appointments enable row level security;
 alter table public.dental_records enable row level security;
-alter table public.notifications enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.telegram_booking_sessions enable row level security;
 
@@ -67,7 +66,7 @@ declare
 begin
   foreach table_name in array array[
     'clinics', 'doctors', 'services', 'doctor_schedules', 'patients',
-    'appointments', 'dental_records', 'notifications', 'admin_users',
+    'appointments', 'dental_records', 'admin_users',
     'telegram_booking_sessions'
   ] loop
     for policy_name in
@@ -80,12 +79,17 @@ begin
 end;
 $$;
 
-revoke all on all tables in schema public from anon;
-revoke all on all tables in schema public from authenticated;
+revoke all on table public.clinics, public.doctors, public.services,
+  public.doctor_schedules, public.patients, public.appointments,
+  public.dental_records, public.admin_users, public.telegram_booking_sessions
+  from anon, authenticated;
 grant usage on schema public to anon, authenticated;
 
 grant select on public.clinics, public.doctors, public.services to anon, authenticated;
-grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select, insert, update, delete on table public.clinics, public.doctors,
+  public.services, public.doctor_schedules, public.patients,
+  public.appointments, public.dental_records, public.admin_users
+  to authenticated;
 
 create policy "public can read clinic details"
   on public.clinics for select to anon, authenticated using (true);
@@ -120,10 +124,6 @@ create policy "admins manage appointments"
   with check ((select public.is_clinic_admin(clinic_id)));
 create policy "admins manage dental records"
   on public.dental_records for all to authenticated
-  using ((select public.is_clinic_admin()))
-  with check ((select public.is_clinic_admin()));
-create policy "admins manage notifications"
-  on public.notifications for all to authenticated
   using ((select public.is_clinic_admin()))
   with check ((select public.is_clinic_admin()));
 create policy "admins can read their own membership"
