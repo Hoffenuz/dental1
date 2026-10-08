@@ -10,7 +10,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Never provide credentials as source-code fallbacks. Supabase injects
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY into hosted Edge Functions;
 // TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET must be configured as secrets.
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+// BOT_TOKEN is retained as a backwards-compatible secret name for the
+// previously deployed function. New deployments should use TELEGRAM_BOT_TOKEN.
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN") || "";
 const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "";
 const ADMIN_CHAT_ID = Deno.env.get("ADMIN_CHAT_ID") || "";
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
@@ -97,6 +99,15 @@ async function isAdminRequest(req: Request): Promise<boolean> {
 }
 
 const encoder = new TextEncoder();
+
+async function getWebhookSecret(): Promise<string> {
+  if (WEBHOOK_SECRET) return WEBHOOK_SECRET;
+  if (!BOT_TOKEN) return "";
+  // A deterministic token-derived value keeps existing deployments working
+  // without placing a second secret in the source code or a public request.
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(`webhook:${BOT_TOKEN}`)));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 async function hmac(key: Uint8Array, data: string): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -643,13 +654,14 @@ serve(async (req: Request) => {
   // Health check va Webhook o'rnatish
   if (req.method === "GET") {
     if (url.searchParams.get("setup") === "webhook" || url.searchParams.get("action") === "setup-webhook") {
-      if (!WEBHOOK_SECRET) {
+      const webhookSecret = await getWebhookSecret();
+      if (!webhookSecret) {
         return new Response(JSON.stringify({ error: "TELEGRAM_WEBHOOK_SECRET is not configured" }), { status: 500 });
       }
       const webhookUrl = "https://jvzghreavlzjpxhnasxd.supabase.co/functions/v1/telegram-bot";
       const setWebhookResult = await callTelegram("setWebhook", {
         url: webhookUrl,
-        secret_token: WEBHOOK_SECRET,
+        secret_token: webhookSecret,
         allowed_updates: ["message", "callback_query"]
       });
       const setMenuButtonResult = await callTelegram("setChatMenuButton", {
@@ -693,7 +705,8 @@ serve(async (req: Request) => {
     // Telegram signs webhooks with this value once setWebhook includes
     // secret_token. Reject arbitrary public POSTs before handling updates.
     const isTelegramUpdate = Boolean(body?.update_id || body?.message || body?.callback_query);
-    if (isTelegramUpdate && (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET)) {
+    const webhookSecret = await getWebhookSecret();
+    if (isTelegramUpdate && (!webhookSecret || req.headers.get("x-telegram-bot-api-secret-token") !== webhookSecret)) {
       return new Response("Unauthorized", { status: 401 });
     }
 
