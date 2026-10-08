@@ -8,9 +8,6 @@ import {
   INITIAL_DENTAL_RECORDS
 } from './data/mockAdminData';
 
-const defaultUrl = 'https://jvzghreavlzjpxhnasxd.supabase.co';
-const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDI2OTcsImV4cCI6MjEwMDg3ODY5N30.bRCRxNOR32VEcI8Pd-0OpSvtfESC1UyTpeJ1TItA0Y4';
-
 const cleanString = (val, fallback = '') => {
   if (!val) return fallback;
   const str = String(val).trim().replace(/^["']|["']$/g, '');
@@ -20,12 +17,12 @@ const cleanString = (val, fallback = '') => {
   return str;
 };
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || defaultUrl;
-const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || defaultKey;
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Har qanday qo'shimcha qo'shtirnoq, probel yoki xato formatlarni tozalash
-const cleanUrl = cleanString(rawUrl, defaultUrl).replace(/\/+$/, '');
-const cleanKey = cleanString(rawKey, defaultKey);
+const cleanUrl = cleanString(rawUrl).replace(/\/+$/, '');
+const cleanKey = cleanString(rawKey);
 
 let client = null;
 if (cleanUrl && cleanKey && cleanUrl.startsWith('http')) {
@@ -44,6 +41,7 @@ if (cleanUrl && cleanKey && cleanUrl.startsWith('http')) {
 
 export const isSupabaseConfigured = Boolean(client);
 export const supabase = client;
+export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
 // Local storage kalitlari
 const STORAGE_KEYS = {
@@ -124,10 +122,14 @@ export const getAppointments = async () => {
 export const updateAppointmentStatus = async (id, status) => {
   if (supabase) {
     try {
-      await supabase.from('appointments').update({ status }).eq('id', id);
+      const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+      if (error) throw error;
     } catch (e) {
       console.warn('Supabase status yangilashda xato:', e.message);
+      throw e;
     }
+  } else if (!isDemoMode) {
+    throw new Error('Supabase ulanmagan');
   }
 
   const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, []);
@@ -166,10 +168,14 @@ export const createManualAppointment = async (bookingData) => {
           end_time: (bookingData.end_time || '10:30').slice(0, 5)
         };
       }
+      if (error) throw error;
     } catch (e) {
       console.warn('Supabase yangi navbat saqlashda xato', e);
+      throw e;
     }
   }
+
+  if (!isDemoMode) throw new Error('Supabase ulanmagan');
 
   const current = loadStorage(STORAGE_KEYS.APPOINTMENTS, []);
   const newBooking = {
@@ -505,6 +511,7 @@ export const getClinicInfo = async () => {
       const { data, error } = await supabase.from('clinics').select('*').limit(1).single();
       if (!error && data) {
         return {
+          id: data.id,
           name: data.name,
           phone: data.phone,
           address: data.address,
@@ -518,7 +525,24 @@ export const getClinicInfo = async () => {
   return loadStorage(STORAGE_KEYS.CLINIC, INITIAL_CLINIC);
 };
 
-export const saveClinicInfo = (info) => {
+export const saveClinicInfo = async (info) => {
+  if (supabase) {
+    const telegramBotUsername = (info.telegram_bot || '').replace(/^@/, '') || null;
+    const { error } = await supabase
+      .from('clinics')
+      .update({
+        name: info.name,
+        phone: info.phone,
+        address: info.address,
+        working_hours: info.working_hours,
+        telegram_bot_username: telegramBotUsername,
+        telegram_admin_chat_id: info.telegram_admin_chat_id || null
+      })
+      .eq('id', info.id || 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d');
+    if (error) throw error;
+  } else if (!isDemoMode) {
+    throw new Error('Supabase ulanmagan');
+  }
   saveStorage(STORAGE_KEYS.CLINIC, info);
   return info;
 };

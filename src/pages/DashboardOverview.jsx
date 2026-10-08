@@ -24,7 +24,7 @@ export default function DashboardOverview({
   const pendingCount = todayAppointments.filter(a => a.status === 'kutilmoqda').length;
   const confirmedCount = todayAppointments.filter(a => a.status === 'tasdiqlandi').length;
   const inProgressCount = todayAppointments.filter(a => a.status === 'qabulda').length;
-  const completedCount = todayAppointments.filter(a => a.status === 'yakunlandi').length;
+  const completedCount = todayAppointments.filter(a => a.status === 'bajarildi').length;
 
   const formatPrice = (p) => {
     const num = Number(p) || 0;
@@ -37,7 +37,7 @@ export default function DashboardOverview({
         return { label: 'Tasdiqlangan', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
       case 'qabulda':
         return { label: 'Qabulda', bg: 'bg-sky-50 text-sky-700 border-sky-200 animate-pulse' };
-      case 'yakunlandi':
+      case 'bajarildi':
         return { label: 'Yakunlandi', bg: 'bg-slate-100 text-slate-600 border-slate-200' };
       case 'bekor_qilindi':
         return { label: 'Bekor', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
@@ -206,13 +206,13 @@ export default function DashboardOverview({
                           )}
                           {app.status === 'qabulda' && (
                             <button
-                              onClick={() => onUpdateStatus(app.id, 'yakunlandi')}
+                              onClick={() => onUpdateStatus(app.id, 'bajarildi')}
                               className="px-2 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[11px] font-bold shadow-xs cursor-pointer"
                             >
                               Yakunlash
                             </button>
                           )}
-                          {app.status === 'yakunlandi' && (
+                          {app.status === 'bajarildi' && (
                             <span className="text-[11px] font-semibold text-emerald-600">✓ Bajarildi</span>
                           )}
                         </td>

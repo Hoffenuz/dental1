@@ -106,8 +106,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     
-    -- Holatlar: kutilmoqda, tasdiqlandi, qabulda, yakunlandi, bekor_qilindi
-    status VARCHAR(50) DEFAULT 'kutilmoqda' CHECK (status IN ('kutilmoqda', 'tasdiqlandi', 'qabulda', 'yakunlandi', 'bekor_qilindi')),
+    -- Holatlar: kutilmoqda, tasdiqlandi, qabulda, bajarildi, bekor_qilindi
+    status VARCHAR(50) DEFAULT 'kutilmoqda' CHECK (status IN ('kutilmoqda', 'tasdiqlandi', 'qabulda', 'bajarildi', 'bekor_qilindi')),
     
     patient_complaint TEXT, -- Bemor shikoyati yoki izohi
     doctor_notes TEXT,      -- Shifokor yozuvi
@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS idx_dental_records_patient ON dental_records(patient_
 CREATE OR REPLACE FUNCTION update_patient_visits()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF (NEW.status = 'yakunlandi' AND OLD.status != 'yakunlandi') THEN
+    IF (NEW.status = 'bajarildi' AND OLD.status != 'bajarildi') THEN
         UPDATE patients 
         SET total_visits = total_visits + 1, updated_at = NOW() 
         WHERE id = NEW.patient_id;

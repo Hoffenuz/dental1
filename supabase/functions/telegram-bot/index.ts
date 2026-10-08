@@ -7,14 +7,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "8880891529:AAEnaYtrY-QhGy22S4jyPU0ZaNMdpS-MPW0";
-const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "https://dentaluz2.netlify.app";
+// Never provide credentials as source-code fallbacks. Supabase injects
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY into hosted Edge Functions;
+// TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET must be configured as secrets.
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "";
 const ADMIN_CHAT_ID = Deno.env.get("ADMIN_CHAT_ID") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://jvzghreavlzjpxhnasxd.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2emdocmVhdmx6anB4aG5hc3hkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTMwMjY5NywiZXhwIjoyMTAwODc4Njk3fQ.cJF86Al2VL8wM8_vLAf15r_aj_WjZm-sJiJxi-F6Ju8";
+const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const TELEGRAM_API = BOT_TOKEN ? `https://api.telegram.org/bot${BOT_TOKEN}` : "";
 
 // Stomatologiya xizmatlari
 // Stomatologiya xizmatlari
@@ -62,6 +66,10 @@ function calculateEndTime(startTime: string, durationMinutes: number = 30): stri
 
 // Telegram API chaqiruvi
 async function callTelegram(method: string, payload: Record<string, unknown>) {
+  if (!BOT_TOKEN) {
+    console.error("TELEGRAM_BOT_TOKEN is not configured");
+    return null;
+  }
   try {
     const res = await fetch(`${TELEGRAM_API}/${method}`, {
       method: "POST",
@@ -73,6 +81,141 @@ async function callTelegram(method: string, payload: Record<string, unknown>) {
     console.error(`Telegram API error (${method}):`, err);
     return null;
   }
+}
+
+async function isAdminRequest(req: Request): Promise<boolean> {
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return false;
+  const { data: userResult, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userResult.user) return false;
+  const { data: membership, error: membershipError } = await supabase
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", userResult.user.id)
+    .maybeSingle();
+  return !membershipError && Boolean(membership);
+}
+
+const encoder = new TextEncoder();
+
+async function hmac(key: Uint8Array, data: string): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(data)));
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i += 1) result |= a[i] ^ b[i];
+  return result === 0;
+}
+
+async function verifiedWebAppUser(initData: unknown): Promise<any | null> {
+  if (!BOT_TOKEN || typeof initData !== "string" || !initData) return null;
+  const params = new URLSearchParams(initData);
+  const receivedHash = params.get("hash");
+  const userValue = params.get("user");
+  if (!receivedHash || !userValue) return null;
+  params.delete("hash");
+  const checkString = [...params.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n");
+  const secret = await hmac(encoder.encode("WebAppData"), BOT_TOKEN);
+  const expected = await hmac(secret, checkString);
+  const received = new Uint8Array((receivedHash.match(/.{1,2}/g) || []).map((part) => parseInt(part, 16)));
+  if (!constantTimeEqual(expected, received)) return null;
+  try { return JSON.parse(userValue); } catch (_) { return null; }
+}
+
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+  });
+}
+
+async function handleVerifiedWebAppAction(body: any, user: any): Promise<Response> {
+  const action = body.action;
+  if (action === "webapp-booked-slots") {
+    const { doctorId, date } = body;
+    if (!doctorId || !/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return json({ error: "Noto'g'ri vaqt parametrlari" }, 400);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("start_time")
+      .eq("doctor_id", doctorId)
+      .eq("appointment_date", date)
+      .neq("status", "bekor_qilindi");
+    if (error) return json({ error: "Band vaqtlarni yuklab bo'lmadi" }, 500);
+    return json({ slots: (data || []).map((item: any) => String(item.start_time).slice(0, 5)) });
+  }
+
+  if (action === "webapp-my-bookings") {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*, doctor:doctors(id, full_name, specialty, photo_url), service:services(id, name, price_uzs)")
+      .eq("patient_telegram_id", user.id)
+      .order("appointment_date", { ascending: false })
+      .order("start_time", { ascending: false });
+    if (error) return json({ error: "Navbatlarni yuklab bo'lmadi" }, 500);
+    const formatted = (data || []).map((item: any) => ({
+      ...item,
+      doctor_name: item.doctor?.full_name || "Shifokor",
+      doctor_specialty: item.doctor?.specialty || "",
+      service_name: item.service?.name || "Konsultatsiya",
+      service_price: item.price_uzs || item.service?.price_uzs || 0,
+      patient_complaint: item.notes || ""
+    }));
+    return json({ data: formatted });
+  }
+
+  if (action === "webapp-cancel-booking") {
+    const appointmentId = body.appointmentId;
+    if (!appointmentId) return json({ error: "Navbat identifikatori kerak" }, 400);
+    const { data, error } = await supabase
+      .from("appointments")
+      .update({ status: "bekor_qilindi" })
+      .eq("id", appointmentId)
+      .eq("patient_telegram_id", user.id)
+      .select("id")
+      .maybeSingle();
+    if (error || !data) return json({ error: "Navbatni bekor qilishga ruxsat yo'q" }, 403);
+    return json({ success: true });
+  }
+
+  if (action === "webapp-create-booking") {
+    const booking = body.booking || {};
+    if (!booking.doctor_id || !booking.service_id || !booking.appointment_date || !booking.start_time || !booking.patient_phone) {
+      return json({ error: "Navbat ma'lumotlari to'liq emas" }, 400);
+    }
+    const [{ data: doctor }, { data: service }] = await Promise.all([
+      supabase.from("doctors").select("id, full_name, specialty, clinic_id").eq("id", booking.doctor_id).eq("is_active", true).maybeSingle(),
+      supabase.from("services").select("id, name, price_uzs, duration_minutes, clinic_id").eq("id", booking.service_id).eq("is_active", true).maybeSingle()
+    ]);
+    if (!doctor || !service || doctor.clinic_id !== service.clinic_id) return json({ error: "Xizmat yoki shifokor topilmadi" }, 400);
+    const patientName = [user.first_name, user.last_name].filter(Boolean).join(" ") || booking.patient_name;
+    const { data: patient, error: patientError } = await supabase.from("patients").upsert({
+      clinic_id: doctor.clinic_id,
+      telegram_id: user.id,
+      telegram_username: user.username || null,
+      full_name: patientName,
+      phone: booking.patient_phone
+    }, { onConflict: "telegram_id" }).select("id").single();
+    if (patientError || !patient) return json({ error: "Bemor profilini saqlab bo'lmadi" }, 500);
+    const startTime = String(booking.start_time).slice(0, 5);
+    const [hour, minute] = startTime.split(":").map(Number);
+    const total = hour * 60 + minute + Number(service.duration_minutes || 30);
+    const endTime = `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
+    const { data, error } = await supabase.from("appointments").insert({
+      clinic_id: doctor.clinic_id, patient_id: patient.id, doctor_id: doctor.id, service_id: service.id,
+      patient_name: patientName, patient_phone: booking.patient_phone, patient_telegram_id: user.id,
+      appointment_date: booking.appointment_date, start_time: `${startTime}:00`, end_time: endTime,
+      status: "kutilmoqda", booking_source: "telegram_webapp", notes: booking.patient_complaint || "", price_uzs: service.price_uzs
+    }).select().single();
+    if (error || !data) return json({ error: error?.code === "23505" ? "Bu vaqt band qilingan" : "Navbatni saqlab bo'lmadi" }, 409);
+    return json({ data: { ...data, doctor_name: doctor.full_name, doctor_specialty: doctor.specialty, service_name: service.name, service_price: service.price_uzs } });
+  }
+  return json({ error: "Noma'lum WebApp amali" }, 400);
 }
 
 // Format narx
@@ -500,8 +643,15 @@ serve(async (req: Request) => {
   // Health check va Webhook o'rnatish
   if (req.method === "GET") {
     if (url.searchParams.get("setup") === "webhook" || url.searchParams.get("action") === "setup-webhook") {
+      if (!WEBHOOK_SECRET) {
+        return new Response(JSON.stringify({ error: "TELEGRAM_WEBHOOK_SECRET is not configured" }), { status: 500 });
+      }
       const webhookUrl = "https://jvzghreavlzjpxhnasxd.supabase.co/functions/v1/telegram-bot";
-      const setWebhookResult = await callTelegram("setWebhook", { url: webhookUrl });
+      const setWebhookResult = await callTelegram("setWebhook", {
+        url: webhookUrl,
+        secret_token: WEBHOOK_SECRET,
+        allowed_updates: ["message", "callback_query"]
+      });
       const setMenuButtonResult = await callTelegram("setChatMenuButton", {
         menu_button: {
           type: "web_app",
@@ -535,10 +685,27 @@ serve(async (req: Request) => {
   }
 
   try {
+    if (!supabase || !BOT_TOKEN || !WEBAPP_URL) {
+      return new Response(JSON.stringify({ error: "Bot secrets are not configured" }), { status: 500 });
+    }
     const body = await req.json();
+
+    // Telegram signs webhooks with this value once setWebhook includes
+    // secret_token. Reject arbitrary public POSTs before handling updates.
+    const isTelegramUpdate = Boolean(body?.update_id || body?.message || body?.callback_query);
+    if (isTelegramUpdate && (!WEBHOOK_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== WEBHOOK_SECRET)) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (typeof body.action === "string" && body.action.startsWith("webapp-")) {
+      const user = await verifiedWebAppUser(body.initData);
+      if (!user) return json({ error: "Telegram tasdiqlashi yaroqsiz" }, 401);
+      return await handleVerifiedWebAppAction(body, user);
+    }
 
     // 1. Tashqi WebApp yoki Admin Dashboarddan kelgan bildirishnoma so'rovi
     if (body.action === "notify-booking") {
+      if (!await isAdminRequest(req)) return new Response("Unauthorized", { status: 401 });
       const b = body.booking;
       if (b?.patient_telegram_id) {
         await callTelegram("sendMessage", {
@@ -551,6 +718,7 @@ serve(async (req: Request) => {
     }
 
     if (body.action === "notify-status-change") {
+      if (!await isAdminRequest(req)) return new Response("Unauthorized", { status: 401 });
       const { booking, newStatus } = body;
       if (booking?.patient_telegram_id) {
         const text = newStatus === "tasdiqlandi" 

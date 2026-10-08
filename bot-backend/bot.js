@@ -12,9 +12,9 @@ import { supabase, logNotification } from './supabase.js';
 
 dotenv.config();
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '8880891529:AAEnaYtrY-QhGy22S4jyPU0ZaNMdpS-MPW0';
-const WEBAPP_URL = process.env.WEBAPP_URL || 'https://dentaluz2.netlify.app';
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '1433285502';
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const WEBAPP_URL = process.env.WEBAPP_URL || '';
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
 const MAPS_URL = 'https://maps.app.goo.gl/sbZqccuTv1p9bKdK6';
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -571,7 +571,7 @@ export async function notifyPatientStatusUpdate(chatId, booking, newStatus) {
     statusText = '🟢 <b>Sizning navbatingiz shifokor tomonidan TASDIQLANDI!</b>\n\nSizni belgilangan vaqtda klinikamizda kutamiz.';
   } else if (newStatus === 'bekor_qilindi') {
     statusText = '🔴 <b>Sizning navbatingiz bekor qilindi.</b>\n\nBoshqa vaqtni tanlash uchun qayta navbat olishingiz mumkin.';
-  } else if (newStatus === 'yakunlandi') {
+  } else if (newStatus === 'bajarildi') {
     statusText = '✅ <b>Muolajangiz muvaffaqiyatli yakunlandi!</b>\n\nIsmailov Dental Clinic markazini tanlaganingiz uchun tashakkur!';
   } else {
     statusText = `ℹ️ <b>Navbatingiz holati yangilandi:</b> ${newStatus}`;

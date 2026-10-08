@@ -24,13 +24,14 @@ import {
   deleteToothRecord,
   deletePatient
 } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 import { 
   INITIAL_CLINIC, 
   INITIAL_DOCTORS, 
   INITIAL_SERVICES 
 } from './data/mockAdminData';
 
-export default function App() {
+function AdminDashboard() {
   const [currentTab, setCurrentTab] = useState('dashboard');
 
   // States - to'g'ridan-to'g'ri bazadan toza ma'lumotlar bilan ishlaydi
@@ -93,17 +94,27 @@ export default function App() {
 
   // Navbat holatini yangilash
   const handleUpdateStatus = async (appointmentId, status) => {
-    const updated = await updateAppointmentStatus(appointmentId, status);
-    setAppointments(updated);
+    try {
+      const updated = await updateAppointmentStatus(appointmentId, status);
+      setAppointments(updated);
+    } catch (error) {
+      console.warn('Navbat holatini yangilashda xato:', error);
+      alert('Navbat holatini yangilab bo\'lmadi. Ruxsat va ulanishni tekshiring.');
+      return;
+    }
     
     // Telegram Bot Edge Function xabarnomasi
     const booking = appointments.find(a => a.id === appointmentId);
     if (booking) {
       const botApiUrl = import.meta.env.VITE_BOT_API_URL || 'https://jvzghreavlzjpxhnasxd.supabase.co/functions/v1/telegram-bot';
       try {
+        const { data: { session } } = await supabase.auth.getSession();
         fetch(botApiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {})
+          },
           body: JSON.stringify({ action: 'notify-status-change', booking, newStatus: status })
         }).catch(() => {});
       } catch (e) {}
@@ -182,9 +193,14 @@ export default function App() {
   };
 
   // Klinika ma'lumotlarini saqlash
-  const handleSaveClinic = (info) => {
-    const updated = saveClinicInfo(info);
-    setClinic(updated);
+  const handleSaveClinic = async (info) => {
+    try {
+      const updated = await saveClinicInfo(info);
+      setClinic(updated);
+    } catch (error) {
+      console.warn('Klinika sozlamalarini saqlashda xato:', error);
+      alert('Sozlamalarni saqlab bo\'lmadi. Ulanishni va ruxsatlarni tekshiring.');
+    }
   };
 
   const pendingAppointmentsCount = appointments.filter(
@@ -269,6 +285,99 @@ export default function App() {
         services={services}
         onCreateBooking={handleCreateBooking}
       />
+    </div>
+  );
+}
+
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [accessError, setAccessError] = useState('');
+
+  useEffect(() => {
+    if (!supabase) {
+      setChecking(false);
+      return undefined;
+    }
+
+    const verifySession = async (nextSession) => {
+      if (!nextSession) {
+        setSession(null);
+        setAccessError('');
+        setChecking(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', nextSession.user.id)
+        .maybeSingle();
+      if (error || !data) {
+        setSession(null);
+        setAccessError('Bu hisob CRM administratori sifatida ruxsat qilinmagan.');
+        await supabase.auth.signOut();
+      } else {
+        setSession(nextSession);
+        setAccessError('');
+      }
+      setChecking(false);
+    };
+
+    supabase.auth.getSession().then(({ data }) => verifySession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      verifySession(nextSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (!isSupabaseConfigured) {
+    return <AccessScreen message="VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY sozlanmagan." />;
+  }
+  if (checking) return <AccessScreen message="Ruxsat tekshirilmoqda…" />;
+  if (!session) return <LoginScreen error={accessError} />;
+  return <AdminDashboard />;
+}
+
+function AccessScreen({ message }) {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <h1 className="text-lg font-black text-slate-800">DentaCare CRM</h1>
+        <p className="mt-3 text-sm text-slate-600">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({ error }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setFormError('');
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if (loginError) setFormError('Email yoki parol noto‘g‘ri.');
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <form onSubmit={submit} className="max-w-sm w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <h1 className="text-lg font-black text-slate-800">DentaCare CRM</h1>
+          <p className="mt-1 text-sm text-slate-500">Administrator hisobingiz bilan kiring.</p>
+        </div>
+        {(error || formError) && <p className="rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700">{error || formError}</p>}
+        <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+        <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Parol" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+        <button disabled={submitting} className="w-full rounded-xl bg-cyan-600 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+          {submitting ? 'Kirilmoqda…' : 'Kirish'}
+        </button>
+      </form>
     </div>
   );
 }

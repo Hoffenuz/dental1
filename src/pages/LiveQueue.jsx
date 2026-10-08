@@ -47,7 +47,7 @@ export default function LiveQueue({
         return { label: 'Tasdiqlangan', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
       case 'qabulda':
         return { label: 'Hozir qabulda', bg: 'bg-sky-50 text-sky-700 border-sky-200 animate-pulse' };
-      case 'yakunlandi':
+      case 'bajarildi':
         return { label: 'Yakunlangan', bg: 'bg-slate-100 text-slate-600 border-slate-200' };
       case 'bekor_qilindi':
         return { label: 'Bekor qilingan', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
@@ -126,7 +126,7 @@ export default function LiveQueue({
               <option value="kutilmoqda">Kutilmoqda</option>
               <option value="tasdiqlandi">Tasdiqlangan</option>
               <option value="qabulda">Hozir qabulda</option>
-              <option value="yakunlandi">Yakunlangan</option>
+              <option value="bajarildi">Yakunlangan</option>
               <option value="bekor_qilindi">Bekor qilingan</option>
             </select>
           </div>
@@ -260,14 +260,14 @@ export default function LiveQueue({
                           )}
                           {app.status === 'qabulda' && (
                             <button
-                              onClick={() => onUpdateStatus(app.id, 'yakunlandi')}
+                              onClick={() => onUpdateStatus(app.id, 'bajarildi')}
                               className="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold cursor-pointer"
                               title="Davolash yakunlandi"
                             >
                               Yakunlash
                             </button>
                           )}
-                          {app.status !== 'bekor_qilindi' && app.status !== 'yakunlandi' && (
+                          {app.status !== 'bekor_qilindi' && app.status !== 'bajarildi' && (
                             <button
                               onClick={() => onUpdateStatus(app.id, 'bekor_qilindi')}
                               className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold cursor-pointer"
